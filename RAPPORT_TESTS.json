@@ -1,0 +1,516 @@
+{
+  "date": "2026-11-03T13:20:29.092Z",
+  "dureeSecondes": 63,
+  "resultats": [
+    {
+      "section": "0. Démarrage des serveurs de test",
+      "nom": "serveur principal démarré (données Ilévia réelles, IA Gemini, notifications)",
+      "ok": true,
+      "detail": "TrajetIA : http://localhost:3097 |   IA : generativelanguage.googleapis.com · gemini-flash-lite-latest |   notifications : actives"
+    },
+    {
+      "section": "0. Démarrage des serveurs de test",
+      "nom": "serveur « IA trop lente » démarré (délai de 1 ms pour provoquer le plan B)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "section": "1. Démarrage et accueil",
+      "nom": "bandeau « Données réelles : Ilévia »",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "section": "1. Démarrage et accueil",
+      "nom": "trajet d’exemple pré-rempli (Gare Lille Flandres → Euratechnologies)",
+      "ok": true,
+      "detail": "Gare Lille Flandres → Euratechnologies"
+    },
+    {
+      "section": "1. Démarrage et accueil",
+      "nom": "des trajets réels sont affichés",
+      "ok": true,
+      "detail": "4 trajets"
+    },
+    {
+      "section": "1. Démarrage et accueil",
+      "nom": "note sur le temps réel affichée",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "section": "1. Démarrage et accueil",
+      "nom": "heure d’arrivée par défaut proche de « maintenant + 1 h »",
+      "ok": true,
+      "detail": "15:30"
+    },
+    {
+      "section": "2. Recherche de lieux et de trajets",
+      "nom": "suggestions d’arrêts réelles pour « republique »",
+      "ok": true,
+      "detail": "République Beaux-Arts"
+    },
+    {
+      "section": "2. Recherche de lieux et de trajets",
+      "nom": "recherche avec un nouveau départ : des trajets s’affichent",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "section": "2. Recherche de lieux et de trajets",
+      "nom": "suggestions pour « euratech »",
+      "ok": true,
+      "detail": "Euratechnologies"
+    },
+    {
+      "section": "2. Recherche de lieux et de trajets",
+      "nom": "bouton ⇅ : départ et arrivée inversés",
+      "ok": true,
+      "detail": "Euratechnologies ↔ République Beaux-Arts"
+    },
+    {
+      "section": "2. Recherche de lieux et de trajets",
+      "nom": "changement de l’heure d’arrivée puis recherche",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "section": "2. Recherche de lieux et de trajets",
+      "nom": "adresse réelle (Base Adresse Nationale) proposée et utilisable comme arrivée",
+      "ok": true,
+      "detail": "10 Rue Nationale 59800 Lille"
+    },
+    {
+      "section": "2. Recherche de lieux et de trajets",
+      "nom": "arrivée vide : message clair au lieu d’une erreur",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "section": "3. Utiliser ma position (géolocalisation avec consentement)",
+      "nom": "interrupteur « position » désactivé par défaut",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "section": "3. Utiliser ma position (géolocalisation avec consentement)",
+      "nom": "bouton 📍 absent tant que la position n’est pas autorisée",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "section": "3. Utiliser ma position (géolocalisation avec consentement)",
+      "nom": "après consentement : bouton 📍 visible",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "section": "3. Utiliser ma position (géolocalisation avec consentement)",
+      "nom": "bouton 📍 : le départ devient « Ma position » (coordonnées du navigateur)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "section": "3. Utiliser ma position (géolocalisation avec consentement)",
+      "nom": "recherche de trajets depuis « Ma position » (marche jusqu’à l’arrêt incluse)",
+      "ok": true,
+      "detail": "4 trajets"
+    },
+    {
+      "section": "3. Utiliser ma position (géolocalisation avec consentement)",
+      "nom": "arrêts réels les plus proches de la gare (position 1)",
+      "ok": true,
+      "detail": "Ma position, Gare Lille Flandres, Lycee Pasteur, Gare Rue De Tournai, Gare Lille Europe, Lion D'Or"
+    },
+    {
+      "section": "3. Utiliser ma position (géolocalisation avec consentement)",
+      "nom": "arrêts réels les plus proches d’Euratechnologies (position 2)",
+      "ok": true,
+      "detail": "Ma position, Euratechnologies, Martyrs, Le Pont, Canteleu Euratechnologies, Canteleu"
+    },
+    {
+      "section": "3. Utiliser ma position (géolocalisation avec consentement)",
+      "nom": "la position n’est jamais mémorisée côté navigateur",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "section": "3. Utiliser ma position (géolocalisation avec consentement)",
+      "nom": "position refusée par l’utilisateur : message clair, rien ne casse",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "section": "4. Incident simulé, vraie IA, alternatives, trajet en cours",
+      "nom": "écran « Perturbation détectée » (incident simulé annoncé comme tel)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "section": "4. Incident simulé, vraie IA, alternatives, trajet en cours",
+      "nom": "recommandation par la VRAIE IA (Gemini) affichée",
+      "ok": true,
+      "detail": "« Ce trajet garantit une arrivée à 15:14 avec le moins de changements possible. »"
+    },
+    {
+      "section": "4. Incident simulé, vraie IA, alternatives, trajet en cours",
+      "nom": "la phrase de l’IA ne contient pas d’identifiant technique",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "section": "4. Incident simulé, vraie IA, alternatives, trajet en cours",
+      "nom": "« Si vous continuez » comparé à la meilleure alternative",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "section": "4. Incident simulé, vraie IA, alternatives, trajet en cours",
+      "nom": "détail de la perturbation affiché",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "section": "4. Incident simulé, vraie IA, alternatives, trajet en cours",
+      "nom": "priorités Heure d’arrivée / Simplicité / Confort : la liste se met à jour",
+      "ok": true,
+      "detail": "avant=18 min,72 min simplicité=18 min,72 min"
+    },
+    {
+      "section": "4. Incident simulé, vraie IA, alternatives, trajet en cours",
+      "nom": "trajet en cours affiché avec l’heure d’arrivée",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "section": "4. Incident simulé, vraie IA, alternatives, trajet en cours",
+      "nom": "« Étape terminée » : la progression va jusqu’à l’arrivée",
+      "ok": true,
+      "detail": "4 étapes"
+    },
+    {
+      "section": "4. Incident simulé, vraie IA, alternatives, trajet en cours",
+      "nom": "« Partager mon heure d’arrivée » : copiée dans le presse-papiers",
+      "ok": true,
+      "detail": "J’arrive à 15:14 (TrajetIA)"
+    },
+    {
+      "section": "4. Incident simulé, vraie IA, alternatives, trajet en cours",
+      "nom": "« Recalculer » : trajets actualisés",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "section": "5. Compte, trajets enregistrés, préférences",
+      "nom": "sans compte : la demande de compte s’ouvre seulement au moment d’enregistrer",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "section": "5. Compte, trajets enregistrés, préférences",
+      "nom": "inscription (e-mail + mot de passe) puis trajet enregistré",
+      "ok": true,
+      "detail": "test-1793711990073@exemple.fr"
+    },
+    {
+      "section": "5. Compte, trajets enregistrés, préférences",
+      "nom": "session ouverte (cookie httpOnly, invisible du JavaScript de la page)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "section": "5. Compte, trajets enregistrés, préférences",
+      "nom": "écran Alertes : le trajet enregistré apparaît",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "section": "5. Compte, trajets enregistrés, préférences",
+      "nom": "couper puis réactiver les alertes d’un trajet",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "section": "5. Compte, trajets enregistrés, préférences",
+      "nom": "« Voir les trajets » rouvre la recherche de ce trajet enregistré",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "section": "5. Compte, trajets enregistrés, préférences",
+      "nom": "préférences IA enregistrées sur le serveur et retrouvées après rechargement",
+      "ok": true,
+      "detail": "{\"Arriver à l’heure\":\"true\",\"Moins de changements\":\"true\",\"Moins de marche\":\"true\",\"Éviter les retards\":\"false\"}"
+    },
+    {
+      "section": "5. Compte, trajets enregistrés, préférences",
+      "nom": "session conservée après rechargement de la page",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "section": "5. Compte, trajets enregistrés, préférences",
+      "nom": "déconnexion",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "section": "5. Compte, trajets enregistrés, préférences",
+      "nom": "inscription avec un e-mail déjà utilisé : refusée avec un message clair",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "section": "5. Compte, trajets enregistrés, préférences",
+      "nom": "connexion avec un mauvais mot de passe : refusée (message générique)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "section": "5. Compte, trajets enregistrés, préférences",
+      "nom": "reconnexion avec le bon mot de passe",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "section": "5. Compte, trajets enregistrés, préférences",
+      "nom": "après reconnexion : trajets et préférences retrouvés",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "section": "5. Compte, trajets enregistrés, préférences",
+      "nom": "suppression d’un trajet enregistré",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "section": "6. Notifications push (réelles)",
+      "nom": "activation des notifications (abonnement push créé)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "section": "6. Notifications push (réelles)",
+      "nom": "abonnement présent dans le navigateur",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "section": "6. Notifications push (réelles)",
+      "nom": "notification de test envoyée par le serveur ET reçue par le navigateur",
+      "ok": true,
+      "detail": "reçue en 1 s"
+    },
+    {
+      "section": "7. Surveillance automatique d’un trajet (alerte + notification)",
+      "nom": "trajet à arriver dans 4 minutes enregistré (impossible à tenir : sert à déclencher l’alerte)",
+      "ok": true,
+      "detail": "arriver pour 14:24"
+    },
+    {
+      "section": "7. Surveillance automatique d’un trajet (alerte + notification)",
+      "nom": "le serveur surveille le trajet et crée une alerte tout seul",
+      "ok": true,
+      "detail": "Perturbation sur « Trajet surveillé (test) » : Arrivée estimée 14:44 au lieu de 14:24. Ouvrez TrajetIA pour voir les alternatives."
+    },
+    {
+      "section": "7. Surveillance automatique d’un trajet (alerte + notification)",
+      "nom": "la notification de l’alerte automatique est reçue",
+      "ok": true,
+      "detail": "reçue en 1 s"
+    },
+    {
+      "section": "7. Surveillance automatique d’un trajet (alerte + notification)",
+      "nom": "pas de doublon : une seule alerte par trajet, jour et type",
+      "ok": true,
+      "detail": "1 → 1"
+    },
+    {
+      "section": "7. Surveillance automatique d’un trajet (alerte + notification)",
+      "nom": "l’alerte apparaît dans « Alertes récentes »",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "section": "8. Profil, fraîcheur des données, export et suppression (RGPD)",
+      "nom": "fraîcheur RÉELLE du flux temps réel mesurée",
+      "ok": true,
+      "detail": "6 s, 345 courses suivies"
+    },
+    {
+      "section": "8. Profil, fraîcheur des données, export et suppression (RGPD)",
+      "nom": "état des services exact (données réelles, IA active, notifications configurées)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "section": "8. Profil, fraîcheur des données, export et suppression (RGPD)",
+      "nom": "export RGPD : toutes les données de la personne",
+      "ok": true,
+      "detail": "1 trajet(s), 1 alerte(s)"
+    },
+    {
+      "section": "8. Profil, fraîcheur des données, export et suppression (RGPD)",
+      "nom": "bouton « Télécharger mes données » sans erreur",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "section": "8. Profil, fraîcheur des données, export et suppression (RGPD)",
+      "nom": "suppression du compte : session fermée et connexion impossible",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "section": "9. Affichage mobile et accessibilité de base",
+      "nom": "mobile (390 px) : aucun défilement horizontal",
+      "ok": true,
+      "detail": "débordement : 0px"
+    },
+    {
+      "section": "9. Affichage mobile et accessibilité de base",
+      "nom": "mobile : écran « accueil » sans débordement",
+      "ok": true,
+      "detail": "0px"
+    },
+    {
+      "section": "9. Affichage mobile et accessibilité de base",
+      "nom": "mobile : écran « alertes » sans débordement",
+      "ok": true,
+      "detail": "0px"
+    },
+    {
+      "section": "9. Affichage mobile et accessibilité de base",
+      "nom": "mobile : écran « itineraires » sans débordement",
+      "ok": true,
+      "detail": "0px"
+    },
+    {
+      "section": "9. Affichage mobile et accessibilité de base",
+      "nom": "mobile : écran « profil » sans débordement",
+      "ok": true,
+      "detail": "0px"
+    },
+    {
+      "section": "9. Affichage mobile et accessibilité de base",
+      "nom": "boutons et champs : tous ont un nom accessible",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "section": "9. Affichage mobile et accessibilité de base",
+      "nom": "langue de la page déclarée (fr)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "section": "10. Plan B : l’IA ne répond pas dans le délai",
+      "nom": "IA trop lente : message clair + alternatives classées par heure d’arrivée",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "section": "10. Plan B : l’IA ne répond pas dans le délai",
+      "nom": "les alternatives restent disponibles et triées",
+      "ok": true,
+      "detail": "15:22 < 15:34"
+    },
+    {
+      "section": "11. Performances, sécurité, indicateurs",
+      "nom": "recherche de lieux (arrêts + adresses de l’État) : temps de réponse médian < 1500 ms",
+      "ok": true,
+      "detail": "157 ms (premières requêtes, avant mise en mémoire)"
+    },
+    {
+      "section": "11. Performances, sécurité, indicateurs",
+      "nom": "calcul d’itinéraires réels : temps de réponse médian < 1500 ms",
+      "ok": true,
+      "detail": "60 ms"
+    },
+    {
+      "section": "11. Performances, sécurité, indicateurs",
+      "nom": "IA (Gemini) : temps de réponse médian < 3000 ms (limite de votre PDF)",
+      "ok": true,
+      "detail": "792, 592 ms"
+    },
+    {
+      "section": "11. Performances, sécurité, indicateurs",
+      "nom": "sécurité : trajets inaccessibles sans connexion (401)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "section": "11. Performances, sécurité, indicateurs",
+      "nom": "sécurité : requête venue d’un autre site refusée (403)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "section": "11. Performances, sécurité, indicateurs",
+      "nom": "sécurité : tableau de bord des KPI refusé sans jeton (401)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "section": "11. Performances, sécurité, indicateurs",
+      "nom": "KPI : visiteurs, North Star et conversion par canal « gare » mesurés",
+      "ok": true,
+      "detail": "visiteurs=1, North Star=2, activation=1, canal gare={\"visiteurs\":1,\"actives\":1,\"tauxConversion\":1}"
+    },
+    {
+      "section": "11. Performances, sécurité, indicateurs",
+      "nom": "santé du service : source, IA et notifications annoncées",
+      "ok": true,
+      "detail": "{\"source\":\"Ilévia (données ouvertes)\",\"ia\":\"generativelanguage.googleapis.com · gemini-flash-lite-latest\",\"push\":true}"
+    },
+    {
+      "section": "12. Persistance après redémarrage et mode production",
+      "nom": "après redémarrage du serveur : le compte et le trajet sont toujours là (base SQLite)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "section": "12. Persistance après redémarrage et mode production",
+      "nom": "mode production : cookie de session HttpOnly + Secure + SameSite=Strict",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "section": "12. Persistance après redémarrage et mode production",
+      "nom": "mode production : en-têtes de sécurité (HSTS, CSP, nosniff)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "section": "12. Persistance après redémarrage et mode production",
+      "nom": "mode production : le même serveur sert l’application construite",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "section": "12. Persistance après redémarrage et mode production",
+      "nom": "mode production : le serveur refuse de démarrer sans JWT_SECRET",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "section": "13. Erreurs JavaScript et réseau pendant tout le parcours",
+      "nom": "aucune erreur JavaScript dans la console (hors refus attendus des tests négatifs : 401, 409)",
+      "ok": true,
+      "detail": "[principal] Failed to load resource: the server responded with a status of 409 (Conflict) | [principal] Failed to load resource: the server responded with a status of 401 (Unauthorized) | [principal] Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    },
+    {
+      "section": "13. Erreurs JavaScript et réseau pendant tout le parcours",
+      "nom": "aucune requête réseau en échec inattendue",
+      "ok": true,
+      "detail": ""
+    }
+  ],
+  "erreursConsole": [
+    "[principal] Failed to load resource: the server responded with a status of 409 (Conflict)",
+    "[principal] Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+    "[principal] Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+  ],
+  "requetesEnEchec": []
+}
