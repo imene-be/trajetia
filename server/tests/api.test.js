@@ -12,13 +12,29 @@ import { verifierRecommandation, nettoyerDemande, recommandationLocale } from '.
 
 async function demarrer(options = {}) {
   const config = loadConfig({ bcryptCost: 4, authRateLimit: 1000, adminToken: 'admin-secret', aiTimeoutMs: 80, ...options.config })
-  const db = openDb(':memory:')
+  // TEST_PG=socket : on passe par le vrai pilote « pg » (comme en production avec Neon), face à un PostgreSQL (PGlite) joignable par le réseau
+  let db
+  let fermerBase = async () => {}
+  if (process.env.TEST_PG === 'socket') {
+    const { PGlite } = await import('@electric-sql/pglite')
+    const { PGLiteSocketServer } = await import('@electric-sql/pglite-socket')
+    const pglite = new PGlite()
+    await pglite.waitReady
+    const port = 54000 + Math.floor(Math.random() * 4000)
+    const socket = new PGLiteSocketServer({ db: pglite, port, host: '127.0.0.1' })
+    await socket.start()
+    db = await openDb(`postgres://postgres:postgres@127.0.0.1:${port}/postgres`, { max: 1 })
+    fermerBase = async () => { await db.close().catch(() => {}); await socket.stop().catch(() => {}); await pglite.close().catch(() => {}) }
+  } else {
+    db = await openDb('memory://')
+    fermerBase = () => db.close().catch(() => {})
+  }
   const { app, push } = creerApp({
     db, config, provider: options.provider === undefined ? creerDemo() : options.provider, claude: options.claude, pushSender: options.pushSender,
   })
   const serveur = await new Promise((r) => { const s = app.listen(0, () => r(s)) })
   const base = `http://localhost:${serveur.address().port}/api`
-  const fermer = () => new Promise((r) => serveur.close(r))
+  const fermer = async () => { await new Promise((r) => { serveur.closeAllConnections?.(); serveur.close(r) }); await fermerBase() }
   // Un « navigateur » avec son propre cookie de session
   const client = () => {
     let cookie = ''
@@ -91,7 +107,7 @@ test('refuse un mot de passe faible, un e-mail invalide et un doublon', async ()
 test('le mot de passe est stocké haché, jamais en clair', async () => {
   const s = await demarrer()
   await s.client()('POST', '/auth/register', { email: 'h@h.fr', password: MDP })
-  const { password_hash } = s.db.prepare('SELECT password_hash FROM users').get()
+  const { password_hash } = await s.db.get('SELECT password_hash FROM users')
   assert.ok(password_hash.startsWith('$2'))
   assert.ok(!password_hash.includes(MDP))
   await s.fermer()
@@ -129,8 +145,8 @@ test('préférences, export et suppression du compte (RGPD)', async () => {
 
   assert.equal((await a('DELETE', '/me', { password: 'mauvais-mot-de-passe' })).status, 403)
   assert.equal((await a('DELETE', '/me', { password: MDP })).status, 200)
-  assert.equal(s.db.prepare('SELECT COUNT(*) AS n FROM users').get().n, 0)
-  assert.equal(s.db.prepare('SELECT COUNT(*) AS n FROM trips').get().n, 0, 'les trajets doivent disparaître avec le compte')
+  assert.equal((await s.db.get('SELECT COUNT(*)::int AS n FROM users')).n, 0)
+  assert.equal((await s.db.get('SELECT COUNT(*)::int AS n FROM trips')).n, 0, 'les trajets doivent disparaître avec le compte')
   await s.fermer()
 })
 
@@ -460,7 +476,7 @@ test('IA compatible OpenAI : quota du 1er modèle épuisé (429) -> le modèle s
   const r = await s.client()('POST', '/recommend', demande)
   assert.equal(r.data.source, 'ia')
   assert.deepEqual(modelesVus, ['modele-epuise', 'modele-secours'])
-  assert.equal(s.db.prepare("SELECT model FROM ai_calls WHERE outcome = 'ok'").get().model, 'modele-secours', 'le journal retient le modèle réellement utilisé')
+  assert.equal((await s.db.get("SELECT model FROM ai_calls WHERE outcome = 'ok'")).model, 'modele-secours', 'le journal retient le modèle réellement utilisé')
   await s.fermer(); await ia.fermer()
 })
 

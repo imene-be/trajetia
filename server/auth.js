@@ -6,10 +6,11 @@ import rateLimit from 'express-rate-limit'
 const COOKIE = 'tj_session'
 const SEPT_JOURS = 7 * 24 * 3600
 const EMAIL = /^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,}$/
+const VIOLATION_UNICITE = '23505' // code PostgreSQL : valeur déjà existante
 
 export const PREFS_PAR_DEFAUT = {
   priorite: 'arrivee', arriverHeure: true, moinsChangements: true, moinsMarche: false, eviterRetards: true,
-  position: false, notifications: false,
+  position: true, notifications: false,
 }
 const CLES_PREFS = Object.keys(PREFS_PAR_DEFAUT)
 
@@ -49,21 +50,25 @@ export function creerAuth({ db, config }) {
     if (motDePasse.length < 10 || motDePasse.length > 128) {
       return res.status(400).json({ error: 'mot_de_passe_faible', message: 'Le mot de passe doit faire entre 10 et 128 caractères.' })
     }
-    if (db.prepare('SELECT 1 FROM users WHERE email = ?').get(email)) {
-      return res.status(409).json({ error: 'email_deja_utilise', message: 'Un compte existe déjà avec cette adresse.' })
-    }
+    const dejaPris = () => res.status(409).json({ error: 'email_deja_utilise', message: 'Un compte existe déjà avec cette adresse.' })
+    if (await db.get('SELECT 1 FROM users WHERE email = $1', [email])) return dejaPris()
     const hash = await bcrypt.hash(motDePasse, config.bcryptCost)
-    const { lastInsertRowid } = db.prepare('INSERT INTO users (email, password_hash, prefs_json) VALUES (?, ?, ?)')
-      .run(email, hash, JSON.stringify(nettoyerPrefs(req.body?.prefs)))
-    poserCookie(res, Number(lastInsertRowid))
-    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(lastInsertRowid)
+    let user
+    try {
+      user = await db.get('INSERT INTO users (email, password_hash, prefs_json) VALUES ($1, $2, $3) RETURNING *',
+        [email, hash, JSON.stringify(nettoyerPrefs(req.body?.prefs))])
+    } catch (e) {
+      if (e?.code === VIOLATION_UNICITE) return dejaPris() // deux inscriptions simultanées avec le même e-mail
+      throw e
+    }
+    poserCookie(res, user.id)
     res.status(201).json({ user: publicUser(user) })
   })
 
   router.post('/auth/login', limiteur, async (req, res) => {
     const email = String(req.body?.email || '').trim().toLowerCase()
     const motDePasse = String(req.body?.password || '')
-    const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email)
+    const user = await db.get('SELECT * FROM users WHERE email = $1', [email])
     // On compare toujours un hash, même si le compte n'existe pas (pas de fuite par le temps de réponse)
     const hash = user?.password_hash || '$2a$12$invalidinvalidinvalidinvalidinvalidinvalidinvalidinvalidinv'
     const ok = await bcrypt.compare(motDePasse, hash)
@@ -80,20 +85,25 @@ export function creerAuth({ db, config }) {
   return router
 }
 
-// Middleware : lit le cookie de session et charge l'utilisateur
+// Lit le cookie de session et renvoie l'utilisateur (ou null)
+export async function utilisateurDepuisCookie({ db, config }, req) {
+  try {
+    const token = req.cookies?.[COOKIE]
+    if (!token) return null
+    const { sub } = jwt.verify(token, config.jwtSecret)
+    return (await db.get('SELECT * FROM users WHERE id = $1', [sub])) || null
+  } catch {
+    return null
+  }
+}
+
+// Middleware : exige une session valide
 export function exigerConnexion({ db, config }) {
-  return (req, res, next) => {
-    try {
-      const token = req.cookies?.[COOKIE]
-      if (!token) return res.status(401).json({ error: 'non_connecte', message: 'Connexion requise.' })
-      const { sub } = jwt.verify(token, config.jwtSecret)
-      const user = db.prepare('SELECT * FROM users WHERE id = ?').get(sub)
-      if (!user) return res.status(401).json({ error: 'non_connecte', message: 'Connexion requise.' })
-      req.user = user
-      next()
-    } catch {
-      res.status(401).json({ error: 'non_connecte', message: 'Connexion requise.' })
-    }
+  return async (req, res, next) => {
+    const user = await utilisateurDepuisCookie({ db, config }, req)
+    if (!user) return res.status(401).json({ error: 'non_connecte', message: 'Connexion requise.' })
+    req.user = user
+    next()
   }
 }
 
@@ -106,20 +116,20 @@ export function creerCompte({ db, config }) {
     res.json({ user: { id: req.user.id, email: req.user.email, prefs: nettoyerPrefs(JSON.parse(req.user.prefs_json || '{}')) } })
   })
 
-  router.put('/me/prefs', exiger, (req, res) => {
+  router.put('/me/prefs', exiger, async (req, res) => {
     const prefs = nettoyerPrefs(req.body)
-    db.prepare('UPDATE users SET prefs_json = ? WHERE id = ?').run(JSON.stringify(prefs), req.user.id)
+    await db.run('UPDATE users SET prefs_json = $1 WHERE id = $2', [JSON.stringify(prefs), req.user.id])
     res.json({ prefs })
   })
 
   // Droit d'accès / portabilité : toutes les données de la personne
-  router.get('/me/export', exiger, (req, res) => {
+  router.get('/me/export', exiger, async (req, res) => {
     const id = req.user.id
     res.json({
       compte: { email: req.user.email, cree_le: req.user.created_at, preferences: nettoyerPrefs(JSON.parse(req.user.prefs_json || '{}')) },
-      trajets: db.prepare('SELECT name, from_label, to_label, arrive_by, alerts_on, created_at FROM trips WHERE user_id = ?').all(id),
-      alertes: db.prepare('SELECT title, body, severity, created_at FROM alerts WHERE user_id = ?').all(id),
-      notifications: db.prepare('SELECT created_at FROM push_subscriptions WHERE user_id = ?').all(id),
+      trajets: await db.all('SELECT name, from_label, to_label, arrive_by, alerts_on, created_at FROM trips WHERE user_id = $1 ORDER BY id', [id]),
+      alertes: await db.all('SELECT title, body, severity, created_at FROM alerts WHERE user_id = $1 ORDER BY id', [id]),
+      notifications: await db.all('SELECT created_at FROM push_subscriptions WHERE user_id = $1', [id]),
     })
   })
 
@@ -127,8 +137,8 @@ export function creerCompte({ db, config }) {
   router.delete('/me', exiger, async (req, res) => {
     const ok = await bcrypt.compare(String(req.body?.password || ''), req.user.password_hash)
     if (!ok) return res.status(403).json({ error: 'mot_de_passe_incorrect', message: 'Mot de passe incorrect.' })
-    db.prepare('UPDATE events SET user_id = NULL WHERE user_id = ?').run(req.user.id)
-    db.prepare('DELETE FROM users WHERE id = ?').run(req.user.id)
+    await db.run('UPDATE events SET user_id = NULL WHERE user_id = $1', [req.user.id])
+    await db.run('DELETE FROM users WHERE id = $1', [req.user.id])
     res.clearCookie(COOKIE, { path: '/' })
     res.json({ ok: true })
   })

@@ -54,7 +54,7 @@ Tout repose sur trois ingrédients :
 | `index.js` | Démarre tout : charge les horaires, lance la surveillance, écoute les demandes |
 | `app.js` | Assemble les morceaux et pose les protections (sécurité, origines autorisées) |
 | `config.js` | Lit les réglages dans `.env` (clés, délais, ports) |
-| `db.js` | La base de données (SQLite) : comptes, trajets, alertes, abonnements, mesures, journal de l'IA |
+| `db.js` | La base de données (PostgreSQL) : comptes, trajets, alertes, abonnements, mesures, journal de l'IA |
 | `auth.js` | Inscription, connexion, déconnexion, export et suppression du compte |
 | `trips.js` | Les trajets enregistrés de l'utilisateur (chacun ne voit que les siens) |
 | `journeys.js` | Les routes « lieux », « itinéraires » et « fraîcheur des données » |
@@ -202,7 +202,7 @@ Après chaque changement dans `.env`, **redémarrez** (`Ctrl + C` puis `npm run 
 
 **« Qu'est-ce qui n'est pas fini ? »** Une seule ville ; marche estimée ; pas de suivi GPS pendant le trajet ; pas de réinitialisation du mot de passe par e-mail ; pas testé sur téléphone ; pas encore en ligne. (Tout est dans `RAPPORT.md`, section 8.)
 
-**« Comment passer à 1000 utilisateurs ? »** Remplacer SQLite par PostgreSQL, héberger avec HTTPS, choisir une IA payante ou avec un meilleur quota. Le code est organisé pour ça : seules les requêtes de `server/db.js` et des routes changent.
+**« Comment passer à 1000 utilisateurs ? »** Garder PostgreSQL (déjà en place), héberger avec HTTPS, choisir une IA payante ou avec un meilleur quota. Le code est organisé pour ça : la base est déjà PostgreSQL.
 
 ---
 

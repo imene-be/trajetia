@@ -26,11 +26,11 @@ const RISQUE = { high: 0, medium: 3, low: 8 }
 // Transforme un itinéraire du serveur en objet utilisé par les écrans
 export function versTrajet(j) {
   const badges = []
-  if (j.reliability === 'high') badges.push({ texte: 'Trajet stable', type: 'vert', icone: '🛡️' })
-  if (j.reliability === 'medium') badges.push({ texte: 'Risque modéré', type: 'orange', icone: '⚠️' })
-  if (j.reliability === 'low') badges.push({ texte: 'Perturbation sur le trajet', type: 'orange', icone: '⚠️' })
-  if (j.walkMin > 0) badges.push({ texte: j.walkMin + ' min de marche', type: 'gris', icone: '🚶' })
-  badges.push({ texte: j.transfers === 0 ? 'Direct' : j.transfers + ' correspondance' + (j.transfers > 1 ? 's' : ''), type: 'gris', icone: '🔁' })
+  if (j.reliability === 'high') badges.push({ texte: 'Trajet stable', type: 'vert', icone: 'shieldCheck' })
+  if (j.reliability === 'medium') badges.push({ texte: 'Risque modéré', type: 'orange', icone: 'alert' })
+  if (j.reliability === 'low') badges.push({ texte: 'Perturbation sur le trajet', type: 'orange', icone: 'alert' })
+  if (j.walkMin > 0) badges.push({ texte: j.walkMin + ' min de marche', type: 'gris', icone: 'walk' })
+  badges.push({ texte: j.transfers === 0 ? 'Direct' : j.transfers + ' correspondance' + (j.transfers > 1 ? 's' : ''), type: 'gris', icone: 'transfer' })
   return {
     id: j.id,
     operateur: j.operator,

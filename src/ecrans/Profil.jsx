@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { Icone } from '../Icones.jsx'
 import { Entete, Interrupteur } from '../composants.jsx'
 import { api, canal } from '../api.js'
 
@@ -47,7 +48,7 @@ export default function Profil({ app }) {
           <Interrupteur actif={app.prefs.notifications} onChange={app.basculerNotifications} label="Notifications" />
         </div>
         {user && app.prefs.notifications && (
-          <button className="bouton-contour large" onClick={app.testerNotification}>🔔 Envoyer une notification de test</button>
+          <button className="bouton-contour large" onClick={app.testerNotification}><Icone nom="bell" taille={16} /> Envoyer une notification de test</button>
         )}
       </div>
 

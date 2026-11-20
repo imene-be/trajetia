@@ -1,4 +1,5 @@
 import React from 'react'
+import { Icone } from '../Icones.jsx'
 import { Entete, IconeMode, Pastille } from '../composants.jsx'
 import { heure } from '../data.js'
 
@@ -32,7 +33,7 @@ export default function TrajetEnCours({ app }) {
         <div>
           <h1 className="titre-page">Trajet en cours</h1>
           <p className="sous-titre">{app.depart?.label} → {app.arrivee?.label}</p>
-          <Pastille type="vert" icone="⚡">Trajet choisi : {trajet.etiquette.toLowerCase()}</Pastille>
+          <Pastille type="vert" icone="zap">Trajet choisi : {trajet.etiquette.toLowerCase()}</Pastille>
         </div>
         <div className="eta">
           <small>Arrivée estimée</small>
@@ -52,7 +53,7 @@ export default function TrajetEnCours({ app }) {
 
       {termine ? (
         <div className="carte-blanche etape-courante arrive">
-          <h3>🎉 Vous êtes arrivé à {app.arrivee?.label}</h3>
+          <h3 className="avec-ico"><Icone nom="checkCircle" taille={20} /> Vous êtes arrivé à {app.arrivee?.label}</h3>
           <p>Arrivée prévue à {heure(trajet.arrivee)}.</p>
           <button className="bouton-contour large" onClick={() => setEtape(0)}>Revoir le trajet</button>
         </div>
@@ -64,10 +65,10 @@ export default function TrajetEnCours({ app }) {
               <small>Prochaine étape</small>
               <div className="texte-etape gros" dangerouslySetInnerHTML={{ __html: courante.texte }} />
             </div>
-            <span className="temps">🕘 {courante.min} min</span>
+            <span className="temps avec-ico"><Icone nom="clock" taille={14} /> {courante.min} min</span>
           </div>
           <button className="bouton-principal large" onClick={() => setEtape(etape + 1)}>
-            ➤ Étape terminée (démo)
+            <Icone nom="check" taille={16} /> Étape terminée (démo)
           </button>
         </div>
       )}
@@ -86,13 +87,13 @@ export default function TrajetEnCours({ app }) {
       )}
 
       <div className="note vert surveille">
-        🛡️ <span><b>Suivi du trajet</b><br /><small>Le suivi en direct pendant le trajet n’est pas encore disponible : utilisez « Recalculer » pour actualiser.</small></span>
+        <Icone nom="shieldCheck" taille={18} /> <span><b>Suivi du trajet</b><br /><small>Le suivi en direct pendant le trajet n’est pas encore disponible : utilisez « Recalculer » pour actualiser.</small></span>
       </div>
 
       <div className="trois-boutons">
-        <button onClick={() => app.chercher().then((t) => t && app.toast('Trajets actualisés'))}>↻ Recalculer</button>
-        <button onClick={() => app.partager(trajet)}>⇪ Partager mon ETA</button>
-        <button className="rouge" onClick={app.enregistrerTrajet}>🔔 Me prévenir en cas de retard</button>
+        <button onClick={() => app.chercher().then((t) => t && app.toast('Trajets actualisés'))}><Icone nom="refresh" taille={16} /> Recalculer</button>
+        <button onClick={() => app.partager(trajet)}><Icone nom="share" taille={16} /> Partager mon ETA</button>
+        <button className="rouge" onClick={app.enregistrerTrajet}><Icone nom="bell" taille={16} /> Me prévenir en cas de retard</button>
       </div>
     </div>
   )

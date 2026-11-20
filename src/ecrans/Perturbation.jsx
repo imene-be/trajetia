@@ -1,4 +1,5 @@
 import React from 'react'
+import { Icone } from '../Icones.jsx'
 import { Entete, IconeMode, Pastille } from '../composants.jsx'
 import { heure, enMinutes } from '../data.js'
 import { trierParArrivee } from '../ia.js'
@@ -51,21 +52,21 @@ function Detail({ app, info }) {
           <div className="champ"><small>Départ</small><b>{app.depart?.label}</b></div>
           <div className="champ"><small>Arrivée</small><b>{app.arrivee?.label}</b></div>
         </div>
-        <span className="bouton-rond echange">⇅</span>
+        <span className="bouton-rond echange"><Icone nom="swap" taille={18} /></span>
       </div>
 
       <div className="alerte-orange">
         <div className="alerte-haut">
-          <span className="rond-alerte">!</span>
+          <span className="rond-alerte"><Icone nom="alert" taille={18} /></span>
           <h2>Perturbation détectée</h2>
-          <Pastille type="orange-doux">● En cours</Pastille>
+          <Pastille type="orange-doux"><span className="pt-live" /> En cours</Pastille>
         </div>
         <p>Votre itinéraire habituel est impacté. {info.cause ? info.cause : ''}</p>
       </div>
 
       <div className="carte-blanche comparaison">
         <div className="comp-ligne">
-          <span className="icone bus">🚌</span>
+          <span className="icone bus"><Icone nom="bus" taille={18} /></span>
           <div><b>Si vous continuez</b><small>Arrivée estimée à</small></div>
           <div className="comp-heure">
             <span className="grand rouge">{heure(info.continuerArrivee)}</span>
@@ -73,7 +74,7 @@ function Detail({ app, info }) {
           </div>
         </div>
         <div className="comp-ligne ia">
-          <span className="icone eclair">⚡</span>
+          <span className="icone eclair"><Icone nom="zap" taille={18} /></span>
           <div>
             <b>{gain <= 0 ? 'Meilleure alternative' : reussi ? 'En suivant l’itinéraire prioritaire' : 'En suivant le trajet le plus rapide'}</b>
             <small>Arrivée estimée à</small>
@@ -87,9 +88,9 @@ function Detail({ app, info }) {
 
       <div className="carte-blanche reco">
         <div className="reco-haut">
-          <h3><span className="etincelle">✦</span> {statut === 'ia' ? 'Recommandation IA' : 'Recommandation automatique'}</h3>
+          <h3><span className="etincelle"><Icone nom="sparkles" taille={18} /></span> {statut === 'ia' ? 'Recommandation IA' : 'Recommandation automatique'}</h3>
           {reussi && (
-            <Pastille type="vert" icone="🛡️">{prioritaire.risque === 0 ? 'Fiabilité élevée' : 'Fiabilité moyenne'}</Pastille>
+            <Pastille type="vert" icone="shieldCheck">{prioritaire.risque === 0 ? 'Fiabilité élevée' : 'Fiabilité moyenne'}</Pastille>
           )}
         </div>
 
@@ -119,7 +120,7 @@ function Detail({ app, info }) {
         {statut === 'secours' && (
           <>
             <div className="note orange">
-              ⏱️ La recommandation de l’IA n’est pas disponible. Voici les alternatives, classées par heure d’arrivée.
+              <Icone nom="clock" taille={14} /> La recommandation de l’IA n’est pas disponible. Voici les alternatives, classées par heure d’arrivée.
             </div>
             <div className="liste-etapes">
               {trierParArrivee(alternatives).map((t) => (
@@ -134,9 +135,9 @@ function Detail({ app, info }) {
         )}
 
         <button className="bouton-principal large" onClick={() => app.choisir(prioritaire)}>
-          {reussi ? 'Suivre le trajet prioritaire' : 'Suivre le trajet le plus rapide'} →
+          {reussi ? 'Suivre le trajet prioritaire' : 'Suivre le trajet le plus rapide'} <Icone nom="arrowRight" taille={16} />
         </button>
-        <button className="bouton-contour large" onClick={() => app.aller('itineraires')}>Voir d’autres options →</button>
+        <button className="bouton-contour large" onClick={() => app.aller('itineraires')}>Voir d’autres options <Icone nom="arrowRight" taille={16} /></button>
       </div>
 
       <div className="detail-perturbation">

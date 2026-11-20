@@ -4,8 +4,9 @@ import { fileURLToPath } from 'node:url'
 import express from 'express'
 import helmet from 'helmet'
 import cookieParser from 'cookie-parser'
-import jwt from 'jsonwebtoken'
-import { creerAuth, creerCompte, nettoyerPrefs } from './auth.js'
+import crypto from 'node:crypto'
+import { creerAuth, creerCompte, nettoyerPrefs, utilisateurDepuisCookie } from './auth.js'
+import { surveillerUneFois } from './monitor.js'
 import { creerTrajets } from './trips.js'
 import { creerItineraires } from './journeys.js'
 import { creerRecommandeur, creerRoutesIa } from './ai.js'
@@ -18,7 +19,12 @@ export function creerApp({ db, config, provider, claude, pushSender, fraicheur }
   const app = express()
   if (config.trustProxy) app.set('trust proxy', 1)
   app.disable('x-powered-by')
-  app.use(helmet())
+  // Les tuiles de la carte viennent d'OpenStreetMap : on autorise uniquement ces images en plus des nôtres
+  app.use(helmet({
+    contentSecurityPolicy: {
+      directives: { ...helmet.contentSecurityPolicy.getDefaultDirectives(), 'img-src': ["'self'", 'data:', 'https://*.tile.openstreetmap.org'] },
+    },
+  }))
   app.use(express.json({ limit: '50kb' }))
   app.use(cookieParser())
 
@@ -34,12 +40,7 @@ export function creerApp({ db, config, provider, claude, pushSender, fraicheur }
     next()
   })
 
-  const userDepuisCookie = (req) => {
-    try {
-      const { sub } = jwt.verify(req.cookies?.tj_session, config.jwtSecret)
-      return db.prepare('SELECT id FROM users WHERE id = ?').get(sub)
-    } catch { return null }
-  }
+  const userDepuisCookie = (req) => utilisateurDepuisCookie({ db, config }, req)
 
   const push = creerPush({ db, config, sender: pushSender })
   const recommander = creerRecommandeur({ db, config, client: claude })
@@ -54,12 +55,18 @@ export function creerApp({ db, config, provider, claude, pushSender, fraicheur }
     push: push.configure || Boolean(pushSender),
   }))
   // Session : répond toujours 200 (utilisateur ou null), pour que le navigateur n'affiche pas d'erreur quand on n'est pas connecté
-  api.get('/session', (req, res) => {
-    try {
-      const { sub } = jwt.verify(req.cookies?.tj_session, config.jwtSecret)
-      const u = db.prepare('SELECT * FROM users WHERE id = ?').get(sub)
-      res.json({ user: u ? { id: u.id, email: u.email, prefs: nettoyerPrefs(JSON.parse(u.prefs_json || '{}')) } : null })
-    } catch { res.json({ user: null }) }
+  api.get('/session', async (req, res) => {
+    const u = await userDepuisCookie(req)
+    res.json({ user: u ? { id: u.id, email: u.email, prefs: nettoyerPrefs(JSON.parse(u.prefs_json || '{}')) } : null })
+  })
+  // Surveillance déclenchée de l'extérieur (Vercel n'a pas de minuteur permanent) : protégée par CRON_SECRET
+  api.get('/cron/surveillance', async (req, res) => {
+    const fourni = Buffer.from(String(req.get('authorization') || '').replace(/^Bearer /, ''))
+    const attendu = Buffer.from(config.cronSecret || '')
+    if (!attendu.length || fourni.length !== attendu.length || !crypto.timingSafeEqual(fourni, attendu)) {
+      return res.status(401).json({ error: 'non_autorise', message: 'Accès refusé.' })
+    }
+    res.json(await surveillerUneFois({ db, provider, push, log: console.warn }))
   })
   api.use(creerAuth({ db, config }))
   api.use(creerCompte({ db, config }))

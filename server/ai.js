@@ -156,34 +156,34 @@ export function creerRecommandeur({ db, config, client }) {
   const memoire = new Map() // résultat déjà calculé -> pas de 2e appel
   const modele = creerAppelModele(config, client)
 
-  const journal = (outcome, ms, nomModele) => {
-    try { db.prepare('INSERT INTO ai_calls (model, outcome, ms) VALUES (?, ?, ?)').run(nomModele || config.aiModel || 'regles', outcome, Math.round(ms)) } catch { /* journal facultatif */ }
+  const journal = async (outcome, ms, nomModele) => {
+    try { await db.run('INSERT INTO ai_calls (model, outcome, ms) VALUES ($1, $2, $3)', [nomModele || config.aiModel || 'regles', outcome, Math.round(ms)]) } catch { /* journal facultatif */ }
   }
   const secours = (raison) => ({ source: 'secours', routeId: null, reason: '', cause: raison })
 
   return async function recommander(demande) {
     const debut = Date.now()
     // Aucune IA configurée : recommandation automatique par règles (gratuite), annoncée comme telle
-    if (!modele) { journal('regles', 0); return recommandationLocale(demande) }
+    if (!modele) { await journal('regles', 0); return recommandationLocale(demande) }
 
     const cle = crypto.createHash('sha256').update(JSON.stringify(demande)).digest('hex')
-    if (memoire.has(cle)) { journal('cache', 0); return memoire.get(cle) }
+    if (memoire.has(cle)) { await journal('cache', 0); return memoire.get(cle) }
 
     try {
       const { texte, modele: utilise } = await modele.appeler(demande, AbortSignal.timeout(config.aiTimeoutMs))
       const reco = lireJson(texte)
       if (!verifierRecommandation(reco, demande.alternatives)) {
-        journal('refusee_par_le_controle', Date.now() - debut, utilise)
+        await journal('refusee_par_le_controle', Date.now() - debut, utilise)
         return secours('refusee_par_le_controle')
       }
       const resultat = { source: 'ia', routeId: reco.routeId, claimedArrivalMin: reco.claimedArrivalMin, reason: reco.reason.trim() }
       memoire.set(cle, resultat)
       if (memoire.size > 200) memoire.delete(memoire.keys().next().value)
-      journal('ok', Date.now() - debut, utilise)
+      await journal('ok', Date.now() - debut, utilise)
       return resultat
     } catch (e) {
       const trop_lent = e?.name === 'TimeoutError' || e?.name === 'AbortError' || /abort|timeout/i.test(e?.message || '')
-      journal(trop_lent ? 'trop_lent' : 'erreur', Date.now() - debut)
+      await journal(trop_lent ? 'trop_lent' : 'erreur', Date.now() - debut)
       return secours(trop_lent ? 'trop_lent' : 'erreur')
     }
   }

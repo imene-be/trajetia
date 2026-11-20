@@ -1,0 +1,14 @@
+# Déclenche la surveillance des perturbations toutes les 5 minutes (Vercel Hobby n'a pas de tâche planifiée aussi fréquente).
+# Secrets à créer dans GitHub (Settings > Secrets and variables > Actions) :
+#   APP_URL      = https://votre-projet.vercel.app
+#   CRON_SECRET  = la même valeur que la variable CRON_SECRET de Vercel
+name: Surveillance des perturbations
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+jobs:
+  surveiller:
+    runs-on: ubuntu-latest
+    steps:
+      - run: curl --fail --silent --show-error --max-time 60 -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" "${{ secrets.APP_URL }}/api/cron/surveillance"

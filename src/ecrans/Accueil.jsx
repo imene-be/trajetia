@@ -1,7 +1,9 @@
 import React from 'react'
+import { Icone } from '../Icones.jsx'
 import { Entete, LigneEtapes, Pastille } from '../composants.jsx'
 import { ChampLieu } from '../formulaires.jsx'
 import { heure, enMinutes } from '../data.js'
+import Carte from '../Carte.jsx'
 
 // Écran 1 : Accueil et trajets proposés
 export default function Accueil({ app }) {
@@ -15,15 +17,15 @@ export default function Accueil({ app }) {
 
   return (
     <div className="ecran">
-      <Entete decor onCloche={() => app.aller('alertes')} />
+      <Entete onCloche={() => app.aller('alertes')} />
 
       <h1 className="titre-accueil">Bonjour !</h1>
       <p className="sous-titre">Des trajets plus sereins, même en cas de perturbations.</p>
 
       <button className="bandeau-ia" onClick={() => app.aller('alertes')}>
-        <span className="etincelle">✦</span>
+        <span className="etincelle"><Icone nom="sparkles" taille={20} /></span>
         <span><b>IA pour anticiper les perturbations</b><small>Des itinéraires plus fiables, en temps réel.</small></span>
-        <span className="chevron">›</span>
+        <Icone nom="chevronRight" taille={18} className="chevron" />
       </button>
 
       <div className="carte-blanche formulaire">
@@ -36,48 +38,50 @@ export default function Accueil({ app }) {
           <ChampLieu etiquette="Départ" lieu={depart} onChoisir={setDepart} onPosition={prefs.position ? app.utiliserPosition : null} />
           <ChampLieu etiquette="Arrivée" lieu={arrivee} onChoisir={setArrivee} />
         </div>
-        <button className="bouton-rond echange" onClick={echanger} aria-label="Inverser départ et arrivée">⇅</button>
+        <button className="bouton-rond echange" onClick={echanger} aria-label="Inverser départ et arrivée"><Icone nom="swap" taille={18} /></button>
       </div>
+
+      <Carte position={app.position} depart={depart} arrivee={arrivee} localisation={app.localisation} onLocaliser={app.localiser} />
 
       <div className="ligne-recherche">
         <label className="champ-heure">
-          <span>🕘 Arriver pour</span>
+          <span className="avec-ico"><Icone nom="clock" taille={16} /> Arriver pour</span>
           <input type="time" value={arriverPour} onChange={(e) => setArriverPour(e.target.value)} />
         </label>
-        <button className="bouton-principal" onClick={() => app.chercher()}>Rechercher ↗</button>
+        <button className="bouton-principal" onClick={() => app.chercher()}><span className="avec-ico">Rechercher <Icone nom="arrowUpRight" taille={16} /></span></button>
       </div>
 
       <div className="modes" aria-hidden="true">
-        <span className="mode-chip"><i className="icone train">🚆</i>Train</span>
+        <span className="mode-chip"><i className="icone train"><Icone nom="train" taille={14} /></i>Train</span>
         <span className="mode-chip"><i className="icone metro">M</i>Métro</span>
-        <span className="mode-chip"><i className="icone tram">🚋</i>Tram</span>
-        <span className="mode-chip"><i className="icone bus">🚌</i>Bus</span>
-        <span className="mode-chip"><i className="icone marche">🚶</i>Marche</span>
+        <span className="mode-chip"><i className="icone tram"><Icone nom="tram" taille={14} /></i>Tram</span>
+        <span className="mode-chip"><i className="icone bus"><Icone nom="bus" taille={14} /></i>Bus</span>
+        <span className="mode-chip"><i className="icone marche"><Icone nom="walk" taille={14} /></i>Marche</span>
       </div>
 
       {recherche.perturbation && (
         <button className="alerte-orange cliquable" onClick={() => app.aller('perturbation')}>
           <span className="rond-alerte">!</span>
           <span><b>Perturbation détectée sur votre trajet</b><small>Voir l’impact sur votre heure d’arrivée et les alternatives.</small></span>
-          <span className="chevron">›</span>
+          <Icone nom="chevronRight" taille={18} className="chevron" />
         </button>
       )}
 
       <div className="titre-liste">
         <h2>Trajets proposés</h2>
-        <button className="lien" onClick={app.enregistrerTrajet}>＋ Enregistrer ce trajet</button>
+        <button className="lien" onClick={app.enregistrerTrajet}><span className="avec-ico"><Icone nom="plus" taille={14} /> Enregistrer ce trajet</span></button>
       </div>
 
       {recherche.etat === 'ok' && (
         <div className="note gris marge">
           {recherche.jour === 'tomorrow'
-            ? `📅 Horaires de demain à ${arriverPour} : horaires officiels du réseau (le temps réel ne concerne que les trajets du moment).`
-            : recherche.tempsReel ? '📡 Retards et suppressions du moment pris en compte (temps réel Ilévia).' : '🕘 Horaires officiels du réseau (temps réel indisponible pour le moment).'}
+            ? <><Icone nom="calendar" taille={14} /> {`Horaires de demain à ${arriverPour} : horaires officiels du réseau (le temps réel ne concerne que les trajets du moment).`}</>
+            : recherche.tempsReel ? <><Icone nom="radio" taille={14} /> Retards et suppressions du moment pris en compte (temps réel Ilévia).</> : <><Icone nom="clock" taille={14} /> Horaires officiels du réseau (temps réel indisponible pour le moment).</>}
         </div>
       )}
       {recherche.etat === 'vide' && <div className="note gris">Choisissez un départ et une arrivée parmi les suggestions, puis lancez la recherche.</div>}
       {recherche.etat === 'chargement' && <div className="chargement"><span className="rouleau" /><b>Recherche des meilleurs trajets…</b></div>}
-      {recherche.etat === 'erreur' && <div className="note orange" role="alert">⚠️ {recherche.erreur}</div>}
+      {recherche.etat === 'erreur' && <div className="note orange" role="alert"><Icone nom="alert" taille={14} /> {recherche.erreur}</div>}
       {recherche.etat === 'ok' && recherche.trajets.length === 0 && <div className="note gris">Aucun trajet trouvé pour cette recherche.</div>}
 
       {recherche.etat === 'ok' && recherche.trajets.map((t, i) => {
@@ -97,17 +101,17 @@ export default function Accueil({ app }) {
             <div className="badges">
               {t.badges.map((b) => <Pastille key={b.texte} type={b.type} icone={b.icone}>{b.texte}</Pastille>)}
             </div>
-            <button className="bouton-contour large" onClick={() => app.choisir(t)}>Suivre ce trajet →</button>
+            <button className="bouton-contour large" onClick={() => app.choisir(t)}><span className="avec-ico">Suivre ce trajet <Icone nom="arrowRight" taille={16} /></span></button>
           </div>
         )
       })}
 
       {recherche.etat === 'ok' && recherche.simule && (
-        <div className="note orange marge">🧪 Incident simulé actif (test). Relancez la recherche pour revenir à la situation réelle.</div>
+        <div className="note orange marge"><Icone nom="flask" taille={14} /> Incident simulé actif (test). Relancez la recherche pour revenir à la situation réelle.</div>
       )}
       {recherche.etat === 'ok' && recherche.trajets.length > 0 && (
         <button className="bouton-demo" onClick={app.simuler}>
-          🧪 Tester : simuler un incident sur ma ligne (horaires réels)
+          <Icone nom="flask" taille={16} /> Tester : simuler un incident sur ma ligne (horaires réels)
         </button>
       )}
     </div>

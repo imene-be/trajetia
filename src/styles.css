@@ -309,3 +309,65 @@ b { font-weight: 650; }
 .grille-prefs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .pref { min-width: 0; padding: 10px 8px; }
 .pref > span:nth-child(2) { min-width: 0; overflow-wrap: anywhere; }
+
+/* ---------- Carte ---------- */
+.carte-zone { position: relative; border-radius: 18px; overflow: hidden; border: 1px solid var(--bord); margin-bottom: 12px; box-shadow: 0 2px 12px rgba(20, 33, 61, .05); }
+.carte-leaflet { height: 210px; width: 100%; background: #e8eef0; z-index: 0; }
+.me-localiser { position: absolute; right: 10px; bottom: 22px; z-index: 500; border: none; background: #fff; color: var(--teal); font-weight: 700; font-size: 13px; padding: 8px 12px; border-radius: 20px; box-shadow: 0 2px 8px rgba(20, 33, 61, .25); }
+.repere { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 800; font-size: 13px; border: 3px solid #fff; box-shadow: 0 2px 6px rgba(20, 33, 61, .35); }
+.repere.a { background: var(--teal); }
+.repere.b { background: var(--marine); }
+.repere.moi { background: #2563eb; box-shadow: 0 0 0 8px rgba(37, 99, 235, .22), 0 2px 6px rgba(20, 33, 61, .35); }
+.info-repere { font-weight: 700; font-size: 12px; color: #2563eb; border-radius: 10px; }
+
+/* =====================================================================
+   Habillage professionnel : icônes en traits, palette sobre, ombres douces
+   ===================================================================== */
+.ico { flex: none; vertical-align: -3px; }
+.avec-ico { display: inline-flex; align-items: center; gap: 6px; }
+.bouton-contour, .trois-boutons button, .bouton-demo, .bouton-principal, .lien { display: inline-flex; align-items: center; justify-content: center; gap: 7px; }
+.bouton-principal.large, .bouton-contour.large { display: flex; }
+.chip { display: inline-flex; align-items: center; gap: 6px; }
+.note { display: block; }
+.note .ico, .note-bas .ico { margin-right: 4px; }
+.etincelle { display: inline-flex; align-items: center; margin-right: 0; }
+.bandeau-ia .etincelle { width: 36px; height: 36px; border-radius: 10px; background: var(--teal); color: #fff; justify-content: center; }
+.chevron { display: inline-flex; color: #94a3b8; }
+.fleche { color: #94a3b8; }
+
+/* Pastilles de modes : rendu uniforme */
+.icone { border-radius: 10px; }
+.icone.metro { border-radius: 10px; font-size: 14px; letter-spacing: -.3px; }
+.icone.eclair { background: var(--teal); border-radius: 10px; width: 36px; height: 36px; }
+.icone.marche { background: #eef2f7; color: #334155; }
+.mode-chip .icone { border-radius: 7px; }
+
+/* Cartes et champs */
+.carte-blanche { border-radius: 14px; box-shadow: 0 1px 2px rgba(20, 33, 61, .04), 0 4px 14px rgba(20, 33, 61, .05); }
+.bandeau-ia { background: #f1f8f6; border: 1px solid #d3e9e3; border-radius: 14px; }
+.alerte-orange { border-radius: 14px; background: #fff7ef; border: 1px solid #f3cfae; }
+.rond-alerte { border-radius: 10px; background: var(--orange); }
+.pastille-ab { background: var(--marine); }
+.champ { border-radius: 10px; }
+.bouton-principal { border-radius: 12px; box-shadow: 0 1px 2px rgba(15, 118, 110, .3); }
+.bouton-contour { border-radius: 12px; border: 1px solid #d5dee8; color: var(--marine); }
+.bouton-demo { border: 1px solid #cfe3df; background: #f6fbfa; border-radius: 12px; font-weight: 600; }
+.mini-bouton { display: inline-flex; align-items: center; color: var(--teal); background: var(--teal-clair); border-radius: 8px; padding: 6px; }
+.bouton-rond { color: var(--marine); box-shadow: 0 1px 2px rgba(20, 33, 61, .06); }
+.formulaire .echange { color: var(--teal); }
+.rond-icone { background: var(--teal-clair); color: var(--teal); border-radius: 10px; }
+.rond-icone.petit { border-radius: 10px; }
+.cadenas { background: #d8efe9; color: var(--teal); border-radius: 10px; }
+.rond-type { border-radius: 10px; }
+.pt-live { width: 7px; height: 7px; border-radius: 50%; background: currentColor; display: inline-block; }
+.pastille-icone { vertical-align: 0; }
+
+/* Barre d'état du téléphone et bandeaux d'information plus discrets */
+.etat-sys { display: inline-flex; color: var(--marine); }
+.bandeau-source { display: flex; align-items: center; justify-content: center; gap: 6px; background: #f1f5f9; color: #475569; border-bottom: 1px solid var(--bord); font-weight: 600; font-size: 12px; }
+.bandeau-source.ok { background: #eef8f2; color: #166534; border-color: #cfe8d9; }
+.bandeau-source.rouge { background: var(--rouge-fond); color: #b91c1c; border-color: #f5b8b8; }
+.onglets button { gap: 4px; }
+.onglets button svg { stroke-width: 1.7; }
+.toast { border-radius: 12px; }
+.temps { color: var(--gris); }

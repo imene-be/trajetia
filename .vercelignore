@@ -1,0 +1,7 @@
+.env
+.env.local
+.env.*
+data
+node_modules
+docs
+RAPPORT_TESTS.json

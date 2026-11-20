@@ -2,6 +2,10 @@
 // avec alertes actives, on demande les itinéraires en temps réel. Si l'arrivée dépasse
 // l'heure voulue ou si une perturbation grave touche le trajet, on crée une alerte
 // (une seule par trajet, par jour et par type) et on envoie une notification.
+//
+// Deux façons de la déclencher :
+//  - serveur permanent : un minuteur (demarrerSurveillance) ;
+//  - Vercel : la route /api/cron/surveillance, appelée de l'extérieur toutes les 5 minutes.
 
 function partiesParis(maintenant) {
   const f = new Intl.DateTimeFormat('fr-CA', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false })
@@ -14,7 +18,7 @@ const hhmm = (min) => `${String(Math.floor(min / 60)).padStart(2, '0')}:${String
 export async function surveillerUneFois({ db, provider, push, maintenant = new Date(), log = () => {} }) {
   if (!provider || !provider.real) return { vérifiés: 0, alertes: 0, raison: 'aucune source de données réelle' }
   const { jour, minutes } = partiesParis(maintenant)
-  const trajets = db.prepare('SELECT t.*, u.id AS uid FROM trips t JOIN users u ON u.id = t.user_id WHERE t.alerts_on = 1').all()
+  const trajets = await db.all('SELECT t.*, u.id AS uid FROM trips t JOIN users u ON u.id = t.user_id WHERE t.alerts_on = 1')
   let verifies = 0
   let alertes = 0
   for (const t of trajets) {
@@ -36,9 +40,12 @@ export async function surveillerUneFois({ db, provider, push, maintenant = new D
         : enRetard
         ? `Arrivée estimée ${hhmm(meilleur.arrivalMin)} au lieu de ${t.arrive_by}. Ouvrez TrajetIA pour voir les alternatives.`
         : 'Une perturbation touche votre trajet. Ouvrez TrajetIA pour voir les alternatives.'
-      const { changes } = db.prepare('INSERT OR IGNORE INTO alerts (user_id, trip_id, signature, title, body, severity) VALUES (?, ?, ?, ?, ?, ?)')
-        .run(t.uid, t.id, `${t.id}:${jour}:${type}`, titre, corps, 'warn')
-      if (changes) {
+      // Une seule alerte par trajet, par jour et par type : la base refuse le doublon
+      const { count } = await db.run(
+        'INSERT INTO alerts (user_id, trip_id, signature, title, body, severity) VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (user_id, signature) DO NOTHING',
+        [t.uid, t.id, `${t.id}:${jour}:${type}`, titre, corps, 'warn'],
+      )
+      if (count) {
         alertes++
         await push.envoyerAUtilisateur(t.uid, { title: titre, body: corps, url: '/?ecran=perturbation' })
       }

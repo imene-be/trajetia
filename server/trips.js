@@ -21,6 +21,9 @@ const vers = (t) => ({
   arriveBy: t.arrive_by, alertsOn: Boolean(t.alerts_on),
 })
 
+// Un identifiant d'URL valide, sinon null (évite d'envoyer n'importe quoi à la base)
+const idValide = (v) => (/^\d{1,9}$/.test(String(v)) ? Number(v) : null)
+
 // Trajets habituels de l'utilisateur. Chaque requête filtre sur user_id :
 // personne ne peut lire ou modifier le trajet d'un autre.
 export function creerTrajets({ db, config }) {
@@ -28,40 +31,44 @@ export function creerTrajets({ db, config }) {
   // La connexion n'est exigée que pour ces routes (et pas pour les routes des routeurs suivants)
   router.use(['/trips', '/alerts'], exigerConnexion({ db, config }))
 
-  router.get('/trips', (req, res) => {
-    res.json({ trips: db.prepare('SELECT * FROM trips WHERE user_id = ? ORDER BY id').all(req.user.id).map(vers) })
+  router.get('/trips', async (req, res) => {
+    res.json({ trips: (await db.all('SELECT * FROM trips WHERE user_id = $1 ORDER BY id', [req.user.id])).map(vers) })
   })
 
-  router.post('/trips', (req, res) => {
+  router.post('/trips', async (req, res) => {
     const t = lire(req.body)
     if (!t) return res.status(400).json({ error: 'trajet_invalide', message: 'Trajet incomplet ou invalide.' })
-    const { n } = db.prepare('SELECT COUNT(*) AS n FROM trips WHERE user_id = ?').get(req.user.id)
+    const { n } = await db.get('SELECT COUNT(*)::int AS n FROM trips WHERE user_id = $1', [req.user.id])
     if (n >= MAX_TRAJETS) return res.status(400).json({ error: 'trop_de_trajets', message: 'Maximum 20 trajets.' })
-    const { lastInsertRowid } = db.prepare(
-      'INSERT INTO trips (user_id, name, from_label, from_id, to_label, to_id, arrive_by, alerts_on) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-    ).run(req.user.id, t.name, t.fromLabel, t.fromId, t.toLabel, t.toId, t.arriveBy, t.alertsOn)
-    res.status(201).json({ trip: vers(db.prepare('SELECT * FROM trips WHERE id = ?').get(lastInsertRowid)) })
+    const cree = await db.get(
+      'INSERT INTO trips (user_id, name, from_label, from_id, to_label, to_id, arrive_by, alerts_on) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
+      [req.user.id, t.name, t.fromLabel, t.fromId, t.toLabel, t.toId, t.arriveBy, t.alertsOn],
+    )
+    res.status(201).json({ trip: vers(cree) })
   })
 
-  router.put('/trips/:id', (req, res) => {
+  router.put('/trips/:id', async (req, res) => {
     const t = lire(req.body)
+    const id = idValide(req.params.id)
     if (!t) return res.status(400).json({ error: 'trajet_invalide', message: 'Trajet incomplet ou invalide.' })
-    const { changes } = db.prepare(
-      'UPDATE trips SET name=?, from_label=?, from_id=?, to_label=?, to_id=?, arrive_by=?, alerts_on=? WHERE id=? AND user_id=?',
-    ).run(t.name, t.fromLabel, t.fromId, t.toLabel, t.toId, t.arriveBy, t.alertsOn, Number(req.params.id), req.user.id)
-    if (!changes) return res.status(404).json({ error: 'introuvable', message: 'Trajet introuvable.' })
-    res.json({ trip: vers(db.prepare('SELECT * FROM trips WHERE id = ?').get(Number(req.params.id))) })
+    const modifie = id === null ? undefined : await db.get(
+      'UPDATE trips SET name=$1, from_label=$2, from_id=$3, to_label=$4, to_id=$5, arrive_by=$6, alerts_on=$7 WHERE id=$8 AND user_id=$9 RETURNING *',
+      [t.name, t.fromLabel, t.fromId, t.toLabel, t.toId, t.arriveBy, t.alertsOn, id, req.user.id],
+    )
+    if (!modifie) return res.status(404).json({ error: 'introuvable', message: 'Trajet introuvable.' })
+    res.json({ trip: vers(modifie) })
   })
 
-  router.delete('/trips/:id', (req, res) => {
-    const { changes } = db.prepare('DELETE FROM trips WHERE id = ? AND user_id = ?').run(Number(req.params.id), req.user.id)
-    if (!changes) return res.status(404).json({ error: 'introuvable', message: 'Trajet introuvable.' })
+  router.delete('/trips/:id', async (req, res) => {
+    const id = idValide(req.params.id)
+    const { count } = id === null ? { count: 0 } : await db.run('DELETE FROM trips WHERE id = $1 AND user_id = $2', [id, req.user.id])
+    if (!count) return res.status(404).json({ error: 'introuvable', message: 'Trajet introuvable.' })
     res.json({ ok: true })
   })
 
-  router.get('/alerts', (req, res) => {
+  router.get('/alerts', async (req, res) => {
     res.json({
-      alerts: db.prepare('SELECT id, trip_id, title, body, severity, created_at FROM alerts WHERE user_id = ? ORDER BY id DESC LIMIT 50').all(req.user.id),
+      alerts: await db.all('SELECT id, trip_id, title, body, severity, created_at FROM alerts WHERE user_id = $1 ORDER BY id DESC LIMIT 50', [req.user.id]),
     })
   })
 

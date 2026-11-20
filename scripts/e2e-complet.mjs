@@ -23,9 +23,9 @@ const ok = (nom, condition, detail = '') => {
 // ---------------------------------------------------------------- serveurs
 const serveurs = []
 async function demarrer(port, env = {}) {
-  const db = `/tmp/tj-complet-${port}.db`
-  for (const f of [db, db + '-wal', db + '-shm']) fs.rmSync(f, { force: true })
-  const p = spawn(process.execPath, ['--env-file=.env', 'server/index.js'], { env: { ...process.env, PORT: String(port), DB_PATH: db, ...env }, stdio: ['ignore', 'pipe', 'pipe'] })
+  const db = `/tmp/tj-complet-${port}-pgdata`
+  fs.rmSync(db, { recursive: true, force: true })
+  const p = spawn(process.execPath, ['--env-file=.env', 'server/index.js'], { env: { ...process.env, PORT: String(port), DB_PATH: db, DATABASE_URL: '', POSTGRES_URL: '', ...env }, stdio: ['ignore', 'pipe', 'pipe'] })
   let journal = ''
   p.stdout.on('data', (d) => { journal += d })
   p.stderr.on('data', (d) => { journal += d })
@@ -93,7 +93,7 @@ try {
   // ============================================================== SERVEURS
   SECTION('0. Démarrage des serveurs de test')
   const A = await demarrer(3097, { MONITOR_INTERVAL_MIN: '0.05', ADMIN_TOKEN: 'admin-test', ALLOWED_ORIGINS: 'http://localhost:3097' })
-  ok('serveur principal démarré (données Ilévia réelles, IA Gemini, notifications)', /réelles/.test(A.journal()) && /gemini/.test(A.journal()) && /notifications : actives/.test(A.journal()), A.journal().split('\n').filter((l) => /IA|notifications/.test(l)).join(' | ').trim())
+  ok('serveur principal démarré (données Ilévia réelles, IA, notifications)', /réelles/.test(A.journal()) && /groq|gemini/.test(A.journal()) && /notifications : actives/.test(A.journal()), A.journal().split('\n').filter((l) => /IA|notifications/.test(l)).join(' | ').trim())
   const C = await demarrer(3096, { AI_TIMEOUT_MS: '1', ALLOWED_ORIGINS: 'http://localhost:3096' })
   ok('serveur « IA trop lente » démarré (délai de 1 ms pour provoquer le plan B)', true)
 
@@ -363,7 +363,7 @@ try {
   const fr = (await texte(page)).match(/flux vieux de (\d+) s, (\d+) courses/)
   ok('fraîcheur RÉELLE du flux temps réel mesurée', Boolean(fr), fr ? `${fr[1]} s, ${fr[2]} courses suivies` : '')
   t = await texte(page)
-  ok('état des services exact (données réelles, IA active, notifications configurées)', t.includes('réelles') && /IA .*gemini/.test(t) && t.includes('configurées'))
+  ok('état des services exact (données réelles, IA active, notifications configurées)', t.includes('réelles') && /IA .*(groq|gemini)/.test(t) && t.includes('configurées'))
   const exportation = await page.evaluate(async () => (await fetch('/api/me/export')).json())
   ok('export RGPD : toutes les données de la personne', exportation.compte?.email === email && Array.isArray(exportation.trajets) && Array.isArray(exportation.alertes), `${exportation.trajets.length} trajet(s), ${exportation.alertes.length} alerte(s)`)
   await cliquer(page, 'Télécharger mes données')
@@ -387,7 +387,7 @@ try {
   await mobile.waitForSelector('.trajet', { timeout: 15000 })
   const debord = await mobile.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
   ok('mobile (390 px) : aucun défilement horizontal', debord <= 1, `débordement : ${debord}px`)
-  for (const ecran of ['accueil', 'alertes', 'itineraires', 'profil']) {
+  for (const ecran of ['accueil', 'alertes', 'favoris', 'profil']) {
     await mobile.goto(`${A.url}/?ecran=${ecran}`, { waitUntil: 'networkidle0' })
     const d = await mobile.evaluate(() => document.querySelector('.contenu').scrollWidth - document.querySelector('.contenu').clientWidth)
     ok(`mobile : écran « ${ecran} » sans débordement`, d <= 1, `${d}px`)
@@ -454,11 +454,11 @@ try {
   await fetch(`${A.url}/api/trips`, { method: 'POST', headers: { 'content-type': 'application/json', cookie }, body: JSON.stringify({ name: 'Persistant', from: { id: 'stop:gare lille flandres', label: 'Gare Lille Flandres' }, to: { id: 'stop:euratechnologies', label: 'Euratechnologies' }, arriveBy: '09:00' }) })
   const dbPath = A.db
   await A.arreter()
-  const A2 = await (async () => { const p = spawn(process.execPath, ['--env-file=.env', 'server/index.js'], { env: { ...process.env, PORT: '3097', DB_PATH: dbPath, ALLOWED_ORIGINS: 'http://localhost:3097' }, stdio: 'ignore' }); serveurs.push({ p, arreter: () => new Promise((r) => { if (p.exitCode !== null || p.signalCode) return r(); p.once('exit', r); p.kill() }) }); for (let i = 0; i < 40; i++) { await sleep(500); try { if ((await (await fetch('http://localhost:3097/api/health')).json()).source?.ready) return true } catch { /* attente */ } } return false })()
+  const A2 = await (async () => { const p = spawn(process.execPath, ['--env-file=.env', 'server/index.js'], { env: { ...process.env, PORT: '3097', DB_PATH: dbPath, DATABASE_URL: '', POSTGRES_URL: '', ALLOWED_ORIGINS: 'http://localhost:3097' }, stdio: 'ignore' }); serveurs.push({ p, arreter: () => new Promise((r) => { if (p.exitCode !== null || p.signalCode) return r(); p.once('exit', r); p.kill() }) }); for (let i = 0; i < 40; i++) { await sleep(500); try { if ((await (await fetch('http://localhost:3097/api/health')).json()).source?.ready) return true } catch { /* attente */ } } return false })()
   const relog = await fetch('http://localhost:3097/api/auth/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'persistance@exemple.fr', password: 'un-mot-de-passe-solide' }) })
   const ck2 = relog.headers.getSetCookie().find((c) => c.startsWith('tj_session=')).split(';')[0]
   const trajetsApres = await (await fetch('http://localhost:3097/api/trips', { headers: { cookie: ck2 } })).json()
-  ok('après redémarrage du serveur : le compte et le trajet sont toujours là (base SQLite)', A2 && relog.status === 200 && trajetsApres.trips.length === 1)
+  ok('après redémarrage du serveur : le compte et le trajet sont toujours là (base PostgreSQL)', A2 && relog.status === 200 && trajetsApres.trips.length === 1)
 
   const secret = 'a'.repeat(40)
   const P = await demarrer(3095, { NODE_ENV: 'production', JWT_SECRET: secret, ALLOWED_ORIGINS: 'http://localhost:3095' })

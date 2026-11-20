@@ -1,4 +1,5 @@
 // Éléments d'interface qui parlent au serveur : choix d'un lieu, fenêtre de compte, bandeau de source.
+import { Icone } from './Icones.jsx'
 import React, { useEffect, useId, useState } from 'react'
 import { api } from './api.js'
 
@@ -23,7 +24,7 @@ export function ChampLieu({ etiquette, lieu, onChoisir, onPosition }) {
   const changer = (valeur) => {
     setTexte(valeur)
     const trouve = options.find((o) => o.label === valeur)
-    if (trouve) onChoisir({ id: trouve.id, label: trouve.label })
+    if (trouve) onChoisir({ id: trouve.id, label: trouve.label, lat: trouve.lat, lon: trouve.lon })
     // Le texte ne correspond plus au lieu choisi : on oublie ce lieu (sinon la recherche utiliserait l'ancien en silence)
     else if (lieu && valeur !== lieu.label) onChoisir(null)
   }
@@ -33,7 +34,7 @@ export function ChampLieu({ etiquette, lieu, onChoisir, onPosition }) {
       <small>{etiquette}</small>
       <span className="champ-ligne">
         <input value={texte} onChange={(e) => changer(e.target.value)} list={idListe} placeholder="Saisissez un arrêt ou une gare" />
-        {onPosition && <button type="button" className="mini-bouton" onClick={onPosition} aria-label="Utiliser ma position">📍</button>}
+        {onPosition && <button type="button" className="mini-bouton" onClick={onPosition} aria-label="Utiliser ma position"><Icone nom="locate" taille={18} /></button>}
       </span>
       <datalist id={idListe}>{options.map((o) => <option key={o.id} value={o.label} />)}</datalist>
     </label>
@@ -65,7 +66,7 @@ export function FeuilleCompte({ onFermer, onConnecte, message }) {
   return (
     <div className="voile" role="dialog" aria-modal="true" aria-label="Compte TrajetIA">
       <form className="feuille" onSubmit={envoyer}>
-        <button type="button" className="fermer" onClick={onFermer} aria-label="Fermer">✕</button>
+        <button type="button" className="fermer" onClick={onFermer} aria-label="Fermer"><Icone nom="x" taille={16} /></button>
         <h2>{mode === 'inscription' ? 'Créer mon compte' : 'Me connecter'}</h2>
         <p className="sous-titre sans-limite">{message || 'Une adresse e-mail suffit pour enregistrer vos trajets et recevoir des alertes.'}</p>
         <label className="champ">
@@ -91,20 +92,20 @@ export function FeuilleCompte({ onFermer, onConnecte, message }) {
 export function BandeauSource({ sante }) {
   if (sante === undefined) return null
   if (sante === null) {
-    return <div className="bandeau-source rouge" role="alert">⛔ Le serveur TrajetIA ne répond pas. Lancez-le avec « npm run dev » dans le dossier trajetia, puis rechargez la page.</div>
+    return <div className="bandeau-source rouge" role="alert"><Icone nom="alertCircle" taille={15} /> Le serveur TrajetIA ne répond pas. Lancez-le avec « npm run dev » dans le dossier trajetia, puis rechargez la page.</div>
   }
   const source = sante.source
   if (!source) {
-    return <div className="bandeau-source rouge" role="alert">⛔ Aucune source de données de transport n’est active sur le serveur.</div>
+    return <div className="bandeau-source rouge" role="alert"><Icone nom="alertCircle" taille={15} /> Aucune source de données de transport n’est active sur le serveur.</div>
   }
   if (source.ready === false) {
-    return <div className="bandeau-source" role="status">⏳ Chargement des horaires du réseau {source.name}… quelques secondes.</div>
+    return <div className="bandeau-source" role="status"><Icone nom="clock" taille={15} /> Chargement des horaires du réseau {source.name}… quelques secondes.</div>
   }
   if (source.error) {
-    return <div className="bandeau-source rouge" role="alert">⛔ Horaires indisponibles : {source.error}</div>
+    return <div className="bandeau-source rouge" role="alert"><Icone nom="alertCircle" taille={15} /> Horaires indisponibles : {source.error}</div>
   }
   if (!source.real) {
-    return <div className="bandeau-source" role="status">🧪 Données de démonstration (fictives). Pas de transport réel.</div>
+    return <div className="bandeau-source" role="status"><Icone nom="flask" taille={15} /> Données de démonstration (fictives). Pas de transport réel.</div>
   }
-  return <div className="bandeau-source ok" role="status">✅ Données réelles : {source.name}. Horaires officiels et temps réel.</div>
+  return <div className="bandeau-source ok" role="status"><Icone nom="checkCircle" taille={15} /> Données réelles : {source.name}. Horaires officiels et temps réel.</div>
 }

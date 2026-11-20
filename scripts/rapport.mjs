@@ -95,7 +95,7 @@ Navigateur (React)                    Serveur Node (Express)                    
 └──────────────────────┘           │  (Connection Scan + correspondances)│◄── Adresses (Base Adresse Nationale)
                                    │ Contrôle de l'IA + plan B           │──► IA : Google Gemini (gratuit)
                                    │ Surveillance toutes les 5 min       │──► Notifications push (clés VAPID, gratuit)
-                                   │ Mesures (KPI) · base SQLite         │
+                                   │ Mesures (KPI) · base PostgreSQL         │
                                    └─────────────────────────────────────┘
 \`\`\`
 

@@ -312,7 +312,7 @@ export function creerMoteur(brut) {
       if (pos < 0) continue
       trouves.push({ nom, idx, score: (pos === 0 ? 0 : 100) + nom.length - Math.min(idx.length, 8) * 3 })
     }
-    return trouves.sort((a, b) => a.score - b.score).slice(0, max).map((t) => ({ id: 'stop:' + t.nom, label: arrets[t.idx[0]].nom, type: 'stop_area' }))
+    return trouves.sort((a, b) => a.score - b.score).slice(0, max).map((t) => ({ id: 'stop:' + t.nom, label: arrets[t.idx[0]].nom, type: 'stop_area', lat: arrets[t.idx[0]].lat, lon: arrets[t.idx[0]].lon }))
   }
 
   function lieuxProches(lat, lon, max = 5) {
@@ -323,7 +323,7 @@ export function creerMoteur(brut) {
       const cle = arrets[x.s].cle
       if (vus.has(cle)) continue
       vus.add(cle)
-      res.push({ id: 'stop:' + cle, label: arrets[x.s].nom, type: 'stop_area' })
+      res.push({ id: 'stop:' + cle, label: arrets[x.s].nom, type: 'stop_area', lat: arrets[x.s].lat, lon: arrets[x.s].lon })
     }
     return res
   }
@@ -599,7 +599,7 @@ export function lireZip(fichier) {
   return { stops: txt('stops.txt'), routes: txt('routes.txt'), trips: txt('trips.txt'), stop_times: txt('stop_times.txt'), calendar: txt('calendar.txt'), calendar_dates: txt('calendar_dates.txt') }
 }
 
-export function creerIlevia(config = {}, { fetchImpl = fetch, log = console.log, dossier = 'data/gtfs' } = {}) {
+export function creerIlevia(config = {}, { fetchImpl = fetch, log = console.log, dossier = config.gtfsDir || 'data/gtfs' } = {}) {
   let moteur = null
   let erreur = null
   let cache = { at: 0, flux: null }
@@ -654,7 +654,7 @@ export function creerIlevia(config = {}, { fetchImpl = fetch, log = console.log,
         if (rep.ok) {
           adresses = (await rep.json()).features
             .filter((f) => f.properties.postcode?.startsWith('59') || f.properties.postcode?.startsWith('62'))
-            .map((f) => ({ id: `addr:${f.geometry.coordinates[0].toFixed(5)},${f.geometry.coordinates[1].toFixed(5)}`, label: f.properties.label, type: 'address' }))
+            .map((f) => ({ id: `addr:${f.geometry.coordinates[0].toFixed(5)},${f.geometry.coordinates[1].toFixed(5)}`, label: f.properties.label, type: 'address', lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0] }))
           adressesEnMemoire.set(clePlace, { at: Date.now(), adresses }) // on ne mémorise que les réponses réussies
           if (adressesEnMemoire.size > 200) adressesEnMemoire.delete(adressesEnMemoire.keys().next().value)
         }

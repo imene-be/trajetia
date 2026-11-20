@@ -1,9 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { BarreOnglets } from './composants.jsx'
+import { Icone } from './Icones.jsx'
 import { FeuilleCompte, BandeauSource } from './formulaires.jsx'
 import Accueil from './ecrans/Accueil.jsx'
 import Perturbation from './ecrans/Perturbation.jsx'
 import Itineraires from './ecrans/Itineraires.jsx'
+import Favoris from './ecrans/Favoris.jsx'
 import TrajetEnCours from './ecrans/TrajetEnCours.jsx'
 import Alertes from './ecrans/Alertes.jsx'
 import Profil from './ecrans/Profil.jsx'
@@ -12,7 +14,7 @@ import { ARRIVER_POUR_DEFAUT, versTrajet, etiqueter } from './data.js'
 
 const PREFS_PAR_DEFAUT = {
   priorite: 'arrivee', arriverHeure: true, moinsChangements: true, moinsMarche: false, eviterRetards: true,
-  position: false, notifications: false,
+  position: true, notifications: false,
 }
 
 function lirePrefsLocales() {
@@ -22,7 +24,7 @@ function lirePrefsLocales() {
 // Quel onglet est allumé selon l'écran affiché
 const ONGLET = {
   accueil: 'accueil', perturbation: 'accueil', trajet: 'accueil',
-  alertes: 'alertes', itineraires: 'itineraires', profil: 'profil',
+  alertes: 'alertes', itineraires: 'accueil', favoris: 'favoris', profil: 'profil',
 }
 
 // Permet d'ouvrir directement un écran : ?ecran=alertes
@@ -51,8 +53,20 @@ export default function App() {
   const [alertes, setAlertes] = useState([])
   const [feuille, setFeuille] = useState(null)
   const [message, setMessage] = useState('')
+  // Position de l'utilisateur : gardée dans le navigateur uniquement (jamais envoyée à l'IA)
+  const [position, setPosition] = useState(null)
+  const [localisation, setLocalisation] = useState(0) // compteur : demande de recentrage de la carte
+  const departModifie = useRef(false)
+  const essaiPosition = useRef(false)
+  const chercherRef = useRef(null)
+  const arriveeRef = useRef(null)
 
   const toast = setMessage
+
+  // Heure affichée dans la barre du téléphone (ordinateur uniquement)
+  const lireHeure = () => new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+  const [heureLocale, setHeureLocale] = useState(lireHeure)
+  useEffect(() => { const t = setInterval(() => setHeureLocale(lireHeure()), 20000); return () => clearInterval(t) }, [])
 
   // Sur ordinateur : le téléphone (390 x 844 px + cadre) se réduit pour tenir dans la fenêtre, sans jamais changer de proportions
   useEffect(() => {
@@ -132,6 +146,25 @@ export default function App() {
     }
   }, [depart, arrivee, arriverPour])
 
+  chercherRef.current = chercher
+
+  // Les repères A et B de la carte ont besoin de coordonnées : on les complète si le lieu n'en a pas (trajet d'exemple, favori)
+  const completer = (lieu, appliquer) => {
+    if (!lieu || Number.isFinite(lieu.lat)) return
+    if (lieu.id.startsWith('addr:')) {
+      const [lon, lat] = lieu.id.slice(5).split(',').map(Number)
+      if (Number.isFinite(lat) && Number.isFinite(lon)) appliquer((l) => (l && l.id === lieu.id ? { ...l, lat, lon } : l))
+      return
+    }
+    api.lieux(lieu.label).then((r) => {
+      const t = r.places.find((x) => x.id === lieu.id)
+      if (t && Number.isFinite(t.lat)) appliquer((l) => (l && l.id === lieu.id ? { ...l, lat: t.lat, lon: t.lon } : l))
+    }).catch(() => {})
+  }
+  useEffect(() => { completer(depart, setDepart) }, [depart?.id, depart?.lat])
+  useEffect(() => { completer(arrivee, setArrivee) }, [arrivee?.id, arrivee?.lat])
+  arriveeRef.current = arrivee
+
   // Premier affichage : un trajet d'exemple prêt à l'emploi (Lille Flandres → Euratechnologies) quand les horaires sont prêts
   useEffect(() => {
     const src = sante?.source
@@ -145,6 +178,39 @@ export default function App() {
     chercher(d, a)
   }, [sante])
 
+  // Lecture de la position (avec l'accord du navigateur). Si `commeDepart`, l'arrêt ou l'adresse la plus proche devient le départ.
+  const localiserUtilisateur = useCallback(({ commeDepart, centrer, silencieux }) => {
+    if (!navigator.geolocation) { if (!silencieux) toast('La géolocalisation n’est pas disponible sur cet appareil.'); return }
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude: lat, longitude: lon } = pos.coords
+        setPosition({ lat, lon })
+        if (centrer) setLocalisation((n) => n + 1)
+        if (!commeDepart) return
+        try {
+          const r = await api.lieuxProches(lat, lon)
+          const lieu = r.places[0]
+          if (!lieu) { if (!silencieux) toast('Aucun arrêt proche trouvé.'); return }
+          if (silencieux && departModifie.current) return // l'utilisateur a déjà choisi son départ
+          const d = { id: lieu.id, label: lieu.label, lat, lon }
+          setDepart(d)
+          if (arriveeRef.current) chercherRef.current?.(d, arriveeRef.current)
+          if (!silencieux) toast('Départ : ' + lieu.label)
+        } catch (e) { if (!silencieux) toast(e.message) }
+      },
+      () => { if (!silencieux) toast('Position refusée : saisissez votre départ à la main.') },
+      { timeout: 8000, maximumAge: 60000 },
+    )
+  }, [])
+
+  // Au lancement : la position sert de départ par défaut, si la préférence est active. Refus = saisie manuelle, sans message.
+  useEffect(() => {
+    const src = sante?.source
+    if (!src || src.ready === false || essaiPosition.current) return
+    essaiPosition.current = true
+    if (prefs.position) localiserUtilisateur({ commeDepart: true, silencieux: true })
+  }, [sante])
+
   const aller = (nom) => {
     setEcran(nom)
     document.querySelector('.contenu')?.scrollTo(0, 0)
@@ -156,7 +222,8 @@ export default function App() {
   const ouvrirCompte = (messageFeuille) => setFeuille({ message: messageFeuille })
 
   const app = {
-    sante, user, prefs, depart, arrivee, setDepart, setArrivee, arriverPour, setArriverPour,
+    sante, user, prefs, depart, arrivee, position, localisation, setArrivee,
+    setDepart: (lieu) => { departModifie.current = true; setDepart(lieu) }, arriverPour, setArriverPour,
     recherche, chercher, choix, etape, setEtape, trajetsEnregistres, alertes,
     aller, toast, ouvrirCompte,
 
@@ -171,7 +238,7 @@ export default function App() {
       const r = await chercher(depart, arrivee, { incident: true })
       if (r?.perturbation) {
         suivre('demo_started')
-        toast('🔔 Incident simulé sur votre ligne (test)')
+        toast('Incident simulé sur votre ligne (test)')
         setEcran('perturbation')
         suivre('alternative_viewed')
       } else if (r) toast('Aucune alternative trouvée pour cet incident simulé.')
@@ -239,22 +306,12 @@ export default function App() {
         setTrajetsEnregistres((l) => l.map((t) => (t.id === trip.id ? trip : t)))
       } catch (e) { toast(e.message) }
     },
-    ouvrirTrajet: (t) => { setDepart(t.from); setArrivee(t.to); setArriverPour(t.arriveBy); setEcran('accueil'); chercher(t.from, t.to) },
+    ouvrirTrajet: (t) => { departModifie.current = true; setDepart(t.from); setArrivee(t.to); setArriverPour(t.arriveBy); setEcran('accueil'); chercher(t.from, t.to) },
 
     // ---------- Position (avec consentement : l'interrupteur du Profil + l'accord du navigateur) ----------
-    utiliserPosition: () => {
-      if (!navigator.geolocation) { toast('La géolocalisation n’est pas disponible sur cet appareil.'); return }
-      navigator.geolocation.getCurrentPosition(
-        async (pos) => {
-          try {
-            const r = await api.lieuxProches(pos.coords.latitude, pos.coords.longitude)
-            if (r.places[0]) { setDepart({ id: r.places[0].id, label: r.places[0].label }); toast('Départ : ' + r.places[0].label) } else toast('Aucun arrêt proche trouvé.')
-          } catch (e) { toast(e.message) }
-        },
-        () => toast('Position refusée : saisissez votre départ à la main.'),
-        { timeout: 8000, maximumAge: 60000 },
-      )
-    },
+    utiliserPosition: () => { departModifie.current = true; localiserUtilisateur({ commeDepart: true, centrer: true }) },
+    // Bouton « Me localiser » de la carte : montre « Vous êtes ici » sans changer le départ
+    localiser: () => localiserUtilisateur({ centrer: true }),
 
     testerNotification: async () => {
       try {
@@ -293,13 +350,13 @@ export default function App() {
     },
   }
 
-  const ecrans = { accueil: Accueil, perturbation: Perturbation, itineraires: Itineraires, trajet: TrajetEnCours, alertes: Alertes, profil: Profil }
+  const ecrans = { accueil: Accueil, perturbation: Perturbation, itineraires: Itineraires, favoris: Favoris, trajet: TrajetEnCours, alertes: Alertes, profil: Profil }
   const Ecran = ecrans[ecran]
 
   return (
     <div className="page">
       <div className="telephone">
-        <div className="barre-statut"><span>9:41</span><span className="encoche" /><span>▂▄▆ 🔋</span></div>
+        <div className="barre-statut"><span>{heureLocale}</span><span className="encoche" /><span className="etat-sys"><Icone nom="radio" taille={15} epaisseur={2.2} /></span></div>
         <div className="contenu">
           <BandeauSource sante={sante} />
           <Ecran key={ecran} app={app} />

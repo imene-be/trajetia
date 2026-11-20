@@ -8,7 +8,7 @@ RUN npm run build
 
 FROM node:24-slim
 WORKDIR /app
-ENV NODE_ENV=production DB_PATH=/data/trajetia.db
+ENV NODE_ENV=production DB_PATH=/data/pgdata
 COPY package*.json ./
 RUN npm ci --omit=dev
 COPY server ./server

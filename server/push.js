@@ -11,7 +11,7 @@ export function creerPush({ db, config, sender }) {
 
   async function envoyerAUtilisateur(userId, payload) {
     if (!configure && !sender) return 0
-    const abonnements = db.prepare('SELECT * FROM push_subscriptions WHERE user_id = ?').all(userId)
+    const abonnements = await db.all('SELECT * FROM push_subscriptions WHERE user_id = $1', [userId])
     let envoyes = 0
     for (const a of abonnements) {
       try {
@@ -19,7 +19,7 @@ export function creerPush({ db, config, sender }) {
         envoyes++
       } catch (e) {
         // Abonnement expiré ou révoqué : on le supprime
-        if (e?.statusCode === 404 || e?.statusCode === 410) db.prepare('DELETE FROM push_subscriptions WHERE id = ?').run(a.id)
+        if (e?.statusCode === 404 || e?.statusCode === 410) await db.run('DELETE FROM push_subscriptions WHERE id = $1', [a.id])
       }
     }
     return envoyes
@@ -28,13 +28,15 @@ export function creerPush({ db, config, sender }) {
   const router = Router()
   router.get('/push/key', (_req, res) => res.json({ publicKey: configure ? config.vapidPublicKey : null }))
 
-  router.post('/push/subscribe', exigerConnexion({ db, config }), (req, res) => {
+  router.post('/push/subscribe', exigerConnexion({ db, config }), async (req, res) => {
     const s = req.body?.subscription
     const ok = s && typeof s.endpoint === 'string' && s.endpoint.startsWith('https://') && s.endpoint.length <= 600
       && typeof s.keys?.p256dh === 'string' && typeof s.keys?.auth === 'string'
     if (!ok) return res.status(400).json({ error: 'abonnement_invalide', message: 'Abonnement invalide.' })
-    db.prepare('INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth) VALUES (?, ?, ?, ?) ON CONFLICT(endpoint) DO UPDATE SET user_id = excluded.user_id, p256dh = excluded.p256dh, auth = excluded.auth')
-      .run(req.user.id, s.endpoint, s.keys.p256dh, s.keys.auth)
+    await db.run(
+      'INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth) VALUES ($1, $2, $3, $4) ON CONFLICT (endpoint) DO UPDATE SET user_id = EXCLUDED.user_id, p256dh = EXCLUDED.p256dh, auth = EXCLUDED.auth',
+      [req.user.id, s.endpoint, s.keys.p256dh, s.keys.auth],
+    )
     res.status(201).json({ ok: true })
   })
 
@@ -46,8 +48,8 @@ export function creerPush({ db, config, sender }) {
     res.json({ envoyes })
   })
 
-  router.delete('/push/subscribe', exigerConnexion({ db, config }), (req, res) => {
-    db.prepare('DELETE FROM push_subscriptions WHERE endpoint = ? AND user_id = ?').run(String(req.body?.endpoint || ''), req.user.id)
+  router.delete('/push/subscribe', exigerConnexion({ db, config }), async (req, res) => {
+    await db.run('DELETE FROM push_subscriptions WHERE endpoint = $1 AND user_id = $2', [String(req.body?.endpoint || ''), req.user.id])
     res.json({ ok: true })
   })
 

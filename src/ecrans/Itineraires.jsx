@@ -1,13 +1,14 @@
 import React from 'react'
+import { Icone } from '../Icones.jsx'
 import { Entete, LigneEtapes, Pastille } from '../composants.jsx'
 import { heure, enMinutes } from '../data.js'
 import { classer, trierParArrivee } from '../ia.js'
 import { useRecommandation } from '../useRecommandation.js'
 
 const PRIORITES = [
-  ['arrivee', '🕘', 'Heure d’arrivée'],
-  ['simplicite', '🔀', 'Simplicité'],
-  ['confort', '🍃', 'Confort'],
+  ['arrivee', 'clock', 'Heure d’arrivée'],
+  ['simplicite', 'route', 'Simplicité'],
+  ['confort', 'leaf', 'Confort'],
 ]
 
 // Écran 3 : Itinéraires alternatifs
@@ -45,12 +46,12 @@ function Liste({ app, info, trajets }) {
 
       {info && (
         <button className="alerte-orange cliquable" onClick={() => app.aller('perturbation')}>
-          <span className="rond-alerte">!</span>
+          <span className="rond-alerte"><Icone nom="alert" taille={18} /></span>
           <span>
             <b>Perturbation sur votre itinéraire habituel</b>
             <small>{info.ligne}. Voici des itinéraires alternatifs.</small>
           </span>
-          <span className="chevron">›</span>
+          <Icone nom="chevronRight" taille={18} className="chevron" />
         </button>
       )}
 
@@ -58,13 +59,13 @@ function Liste({ app, info, trajets }) {
         <span>Prioriser :</span>
         {PRIORITES.map(([id, icone, nom]) => (
           <button key={id} className={'chip' + (priorite === id ? ' actif' : '')} onClick={() => setPriorite(id)}>
-            {icone} {nom}
+            <Icone nom={icone} taille={14} /> {nom}
           </button>
         ))}
       </div>
 
       {statut === 'secours' && (
-        <div className="note orange marge">⏱️ La recommandation de l’IA n’est pas disponible : alternatives classées par heure d’arrivée.</div>
+        <div className="note orange marge"><Icone nom="clock" taille={14} /> La recommandation de l’IA n’est pas disponible : alternatives classées par heure d’arrivée.</div>
       )}
 
       {liste.map((t, i) => {
@@ -85,7 +86,7 @@ function Liste({ app, info, trajets }) {
 
             {recommande && (
               <div className="boite-ia">
-                <span className="etincelle">✦</span>
+                <span className="etincelle"><Icone nom="sparkles" taille={20} /></span>
                 <span>
                   <b>{statut === 'ia' ? 'Itinéraire recommandé par l’IA' : 'Itinéraire recommandé'}</b>
                   <small>{statut === 'chargement' ? 'L’IA analyse les alternatives…' : reco.raison}</small>
@@ -93,7 +94,7 @@ function Liste({ app, info, trajets }) {
               </div>
             )}
             <button className={recommande ? 'bouton-principal large' : 'bouton-contour large'} onClick={() => app.choisir(t)}>
-              Choisir cet itinéraire →
+              <span className="avec-ico">Choisir cet itinéraire <Icone nom="arrowRight" taille={16} /></span>
             </button>
           </div>
         )

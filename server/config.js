@@ -6,7 +6,12 @@ export function loadConfig(overrides = {}) {
   const config = {
     isProd,
     port: Number(process.env.PORT || 3001),
-    dbPath: process.env.DB_PATH || 'data/trajetia.db',
+    // PostgreSQL : DATABASE_URL (ou POSTGRES_URL fournie par Vercel/Neon). Sans adresse : PostgreSQL local intégré (PGlite) dans data/pgdata
+    databaseUrl: process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.DB_PATH || 'data/pgdata',
+    // Dossier où télécharger les horaires (sur Vercel seul /tmp est inscriptible)
+    gtfsDir: process.env.GTFS_DIR || 'data/gtfs',
+    // Secret pour la route de surveillance appelée de l'extérieur (Vercel)
+    cronSecret: process.env.CRON_SECRET || '',
     jwtSecret: process.env.JWT_SECRET || (isProd ? '' : 'dev-only-secret-change-me-please-0123456789'),
     bcryptCost: Number(process.env.BCRYPT_COST || 12),
     // Origines autorisées pour les requêtes qui modifient des données (protection CSRF en plus du cookie SameSite)
