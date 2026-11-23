@@ -11,4 +11,16 @@ jobs:
   surveiller:
     runs-on: ubuntu-latest
     steps:
-      - run: curl --fail --silent --show-error --max-time 60 -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" "${{ secrets.APP_URL }}/api/cron/surveillance"
+      # Bloc « | » : la commande contient « Authorization: Bearer », dont le « : » casserait une valeur YAML sur une ligne
+      - name: Appeler la surveillance
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$APP_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "Secrets APP_URL ou CRON_SECRET absents : surveillance ignorée."
+            exit 0
+          fi
+          curl --fail --silent --show-error --max-time 60 \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "$APP_URL/api/cron/surveillance"
