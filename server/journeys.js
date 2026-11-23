@@ -6,10 +6,46 @@ const HEURE = /^([01]\d|2[0-3]):[0-5]\d$/
 
 // Recherche de lieux, d'itinéraires et fraîcheur des données.
 // Rien n'est enregistré ici : la position (lat/lon) sert uniquement à trouver des arrêts proches.
-export function creerItineraires({ provider, fraicheur = fraicheurIlevia }) {
+// Tracés « sur les rues » pour la carte : service de calcul d'itinéraire OpenStreetMap (FOSSGIS, gratuit, sans clé).
+// L'appel passe par notre serveur : le service ne voit jamais l'adresse IP de l'utilisateur.
+const URL_RUES = 'https://routing.openstreetmap.de'
+const PROFILS = { foot: 'routed-foot', car: 'routed-car' }
+const POINT = /^-?\d{1,3}\.\d{1,7},-?\d{1,3}\.\d{1,7}$/
+
+export function creerItineraires({ provider, fraicheur = fraicheurIlevia, fetchImpl = fetch }) {
   const router = Router()
-  // La limite ne concerne que ces trois routes (et pas celles des routeurs suivants)
+  // La limite ne concerne que ces routes (et pas celles des routeurs suivants)
   router.use(['/places', '/journeys', '/data-freshness'], rateLimit({ windowMs: 60_000, limit: 120, standardHeaders: true, legacyHeaders: false }))
+  router.use('/streets', rateLimit({ windowMs: 60_000, limit: 240, standardHeaders: true, legacyHeaders: false }))
+  const tracesEnMemoire = new Map()
+
+  // GET /api/streets?mode=foot|car&points=lat,lon;lat,lon;…  ->  { path: [[lat, lon], …], distanceM }
+  router.get('/streets', async (req, res) => {
+    const mode = String(req.query.mode || '')
+    const points = String(req.query.points || '').split(';').filter(Boolean)
+    if (!PROFILS[mode] || points.length < 2 || points.length > 60 || !points.every((p) => POINT.test(p))) {
+      return res.status(400).json({ error: 'requete_invalide', message: 'Mode (foot ou car) et 2 à 60 points « lat,lon » attendus.' })
+    }
+    const cle = mode + '|' + points.join(';')
+    const connu = tracesEnMemoire.get(cle)
+    if (connu) return res.json(connu)
+    const coords = points.map((p) => { const [lat, lon] = p.split(','); return `${lon},${lat}` }).join(';')
+    try {
+      const rep = await fetchImpl(`${URL_RUES}/${PROFILS[mode]}/route/v1/driving/${coords}?overview=full&geometries=geojson`, {
+        signal: AbortSignal.timeout(5000), headers: { 'User-Agent': 'TrajetIA (projet etudiant)' },
+      })
+      if (!rep.ok) throw new Error('HTTP ' + rep.status)
+      const donnees = await rep.json()
+      const route = donnees.routes?.[0]
+      if (donnees.code !== 'Ok' || !route) throw new Error(donnees.code || 'pas de tracé')
+      const resultat = { path: route.geometry.coordinates.map(([lon, lat]) => [lat, lon]), distanceM: Math.round(route.distance) }
+      tracesEnMemoire.set(cle, resultat)
+      if (tracesEnMemoire.size > 500) tracesEnMemoire.delete(tracesEnMemoire.keys().next().value)
+      res.json(resultat)
+    } catch (e) {
+      res.status(502).json({ error: 'source_en_erreur', message: 'Tracé sur les rues indisponible.', detail: e.message })
+    }
+  })
 
   const source = () => ({ name: provider.name, real: provider.real })
   // Les horaires d'un réseau se chargent au démarrage (quelques secondes) : on le dit clairement

@@ -115,9 +115,9 @@ b { font-weight: 650; }
 .ligne-recherche { display: flex; gap: 10px; margin-bottom: 12px; }
 .champ-heure { flex: 1; display: flex; align-items: center; justify-content: space-between; gap: 6px; background: #fff; border: 1px solid var(--bord); border-radius: 14px; padding: 0 12px; font-size: 13px; color: var(--gris); }
 .champ-heure input { border: none; background: transparent; font: inherit; font-weight: 700; font-size: 15px; color: var(--marine); outline: none; width: 78px; }
-.modes { display: flex; gap: 8px; overflow-x: auto; margin-bottom: 14px; padding-bottom: 2px; scrollbar-width: none; }
-.mode-chip { display: inline-flex; align-items: center; gap: 6px; background: #fff; border: 1px solid var(--bord); border-radius: 999px; padding: 5px 12px 5px 6px; font-size: 12.5px; white-space: nowrap; }
-.mode-chip .icone { width: 24px; height: 24px; font-size: 12px; border-radius: 8px; font-style: normal; }
+.modes { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 4px; margin-bottom: 14px; }
+.mode-chip { display: inline-flex; align-items: center; gap: 4px; background: #fff; border: 1px solid var(--bord); border-radius: 999px; padding: 3px 8px 3px 3px; font-size: 12px; white-space: nowrap; }
+.mode-chip .icone { width: 20px; height: 20px; font-size: 11px; border-radius: 7px; font-style: normal; }
 .titre-liste { display: flex; align-items: center; justify-content: space-between; margin: 12px 0 8px; }
 .titre-liste h2 { font-size: 18px; }
 .tri { font-size: 12px; color: var(--gris); background: #fff; border: 1px solid var(--bord); border-radius: 12px; padding: 5px 10px; }
@@ -312,7 +312,7 @@ b { font-weight: 650; }
 
 /* ---------- Carte ---------- */
 .carte-zone { position: relative; border-radius: 18px; overflow: hidden; border: 1px solid var(--bord); margin-bottom: 12px; box-shadow: 0 2px 12px rgba(20, 33, 61, .05); }
-.carte-leaflet { height: 210px; width: 100%; background: #e8eef0; z-index: 0; }
+.carte-leaflet { height: 250px; width: 100%; background: #e8eef0; z-index: 0; }
 .me-localiser { position: absolute; right: 10px; bottom: 22px; z-index: 500; border: none; background: #fff; color: var(--teal); font-weight: 700; font-size: 13px; padding: 8px 12px; border-radius: 20px; box-shadow: 0 2px 8px rgba(20, 33, 61, .25); }
 .repere { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 800; font-size: 13px; border: 3px solid #fff; box-shadow: 0 2px 6px rgba(20, 33, 61, .35); }
 .repere.a { background: var(--teal); }
@@ -391,3 +391,17 @@ b { font-weight: 650; }
 .suggestions.vide { padding: 10px 12px; font-size: 13px; color: var(--gris); }
 .etat-trajet { display: flex; gap: 10px; align-items: flex-start; }
 .etat-trajet svg { flex-shrink: 0; margin-top: 1px; }
+
+/* Tracé du trajet sur la carte */
+.legende-carte { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; font-size: 12.5px; color: var(--gris); margin: -4px 2px 12px; }
+.legende-carte b { color: var(--marine); }
+.cliquable-trajet { cursor: pointer; transition: box-shadow .15s, border-color .15s; }
+.trajet.sur-carte { border: 2px solid var(--teal); box-shadow: 0 0 0 3px var(--teal-clair); }
+.leaflet-tooltip.info-ligne { padding: 2px 6px 2px 2px; font-size: 11.5px; font-weight: 600; color: var(--marine); border-radius: 8px; box-shadow: 0 2px 6px rgba(20, 33, 61, .18); }
+.leaflet-tooltip.info-ligne::before { display: none; }
+.pastille-ligne { display: inline-block; color: #fff; border-radius: 6px; padding: 1px 6px; font-size: 11px; margin-right: 2px; }
+
+/* Préférences IA : icône et interrupteur en haut, libellé en dessous sur toute la largeur (plus de mot coupé) */
+.pref { display: grid; grid-template-columns: auto 1fr; align-items: center; row-gap: 8px; }
+.pref > span:nth-child(2) { grid-column: 1 / -1; grid-row: 2; overflow-wrap: normal; hyphens: manual; }
+.pref > :last-child { justify-self: end; grid-row: 1; grid-column: 2; }

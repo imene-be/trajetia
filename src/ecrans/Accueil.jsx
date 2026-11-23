@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Icone } from '../Icones.jsx'
 import { Entete, LigneEtapes, Pastille } from '../composants.jsx'
 import { ChampLieu } from '../formulaires.jsx'
@@ -9,6 +9,10 @@ import Carte from '../Carte.jsx'
 export default function Accueil({ app }) {
   const { depart, arrivee, setDepart, setArrivee, arriverPour, setArriverPour, recherche, prefs } = app
   const limite = enMinutes(arriverPour)
+  // Trajet dessiné sur la carte : celui que l'utilisateur a touché, sinon le premier de la liste
+  const [selection, setSelection] = useState(null)
+  const trajets = recherche.etat === 'ok' ? recherche.trajets : []
+  const affiche = trajets.find((t) => t.id === selection) || trajets[0] || null
 
   const echanger = () => {
     setDepart(arrivee)
@@ -41,7 +45,13 @@ export default function Accueil({ app }) {
         <button className="bouton-rond echange" onClick={echanger} aria-label="Inverser départ et arrivée"><Icone nom="swap" taille={18} /></button>
       </div>
 
-      <Carte position={app.position} depart={depart} arrivee={arrivee} localisation={app.localisation} onLocaliser={app.localiser} />
+      <Carte position={app.position} depart={depart} arrivee={arrivee} localisation={app.localisation} onLocaliser={app.localiser} trajet={affiche} />
+      {affiche && (
+        <div className="legende-carte">
+          <Icone nom="route" taille={14} /> Sur la carte : <b>{affiche.etiquette.toLowerCase()}</b>, arrivée {heure(affiche.arrivee)}.
+          {trajets.length > 1 && <span> Touchez un autre trajet pour l’afficher.</span>}
+        </div>
+      )}
 
       <div className="ligne-recherche">
         <label className="champ-heure">
@@ -103,7 +113,10 @@ export default function Accueil({ app }) {
       {recherche.etat === 'ok' && recherche.trajets.map((t, i) => {
         const enRetard = t.arrivee > limite
         return (
-          <div key={t.id} className={'carte-blanche trajet' + (i === 0 ? ' meilleur' : '')}>
+          <div
+            key={t.id} className={'carte-blanche trajet cliquable-trajet' + (i === 0 ? ' meilleur' : '') + (t === affiche ? ' sur-carte' : '')}
+            onClick={() => { setSelection(t.id); document.querySelector('.carte-zone')?.scrollIntoView({ behavior: 'smooth', block: 'center' }) }}
+          >
             <div className="trajet-haut">
               <div>
                 <div className="duree">{t.duree} min</div>
@@ -117,7 +130,7 @@ export default function Accueil({ app }) {
             <div className="badges">
               {t.badges.map((b) => <Pastille key={b.texte} type={b.type} icone={b.icone}>{b.texte}</Pastille>)}
             </div>
-            <button className="bouton-contour large" onClick={() => app.choisir(t)}><span className="avec-ico">Suivre ce trajet <Icone nom="arrowRight" taille={16} /></span></button>
+            <button className="bouton-contour large" onClick={(e) => { e.stopPropagation(); app.choisir(t) }}><span className="avec-ico">Suivre ce trajet <Icone nom="arrowRight" taille={16} /></span></button>
           </div>
         )
       })}

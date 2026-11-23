@@ -37,6 +37,7 @@ export const api = {
   itineraires: ({ from, to, arrive, incident }) =>
     appeler('GET', `/journeys?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&arrive=${arrive}` + (incident ? '&incident=1' : '')),
   fraicheur: () => appeler('GET', '/data-freshness'),
+  rues: (mode, chemin) => appeler('GET', `/streets?mode=${mode}&points=` + chemin.map(([lat, lon]) => lat.toFixed(6) + ',' + lon.toFixed(6)).join(';')),
   recommander: (demande) => appeler('POST', '/recommend', demande),
   cleePush: () => appeler('GET', '/push/key'),
   abonnerPush: (subscription) => appeler('POST', '/push/subscribe', { subscription }),

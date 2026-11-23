@@ -34,7 +34,7 @@ export function versTrajet(j) {
   return {
     id: j.id,
     operateur: j.operator,
-    etapes: j.legs.map((l) => ({ mode: l.mode, ligne: l.label, min: l.minutes, texte: l.text })),
+    etapes: j.legs.map((l) => ({ mode: l.mode, ligne: l.label, min: l.minutes, texte: l.text, chemin: l.path || null, couleur: l.color || null, de: l.from, vers: l.to })),
     duree: j.durationMin,
     arrivee: j.arrivalMin,
     correspondances: j.transfers,

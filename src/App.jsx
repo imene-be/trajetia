@@ -304,6 +304,9 @@ export default function App() {
     enregistrerTrajet: () => {
       if (!depart || !arrivee) { toast('Choisissez un départ et une arrivée.'); return }
       const faire = async () => {
+        // Déjà enregistré (même départ, même arrivée, même heure) : on ne crée pas de doublon
+        const existant = trajetsEnregistres.find((t) => t.from?.id === depart.id && t.to?.id === arrivee.id && t.arriveBy === arriverPour)
+        if (existant) { toast(existant.alertsOn ? 'Ce trajet est déjà enregistré et surveillé.' : 'Ce trajet est déjà enregistré : activez ses alertes dans Mes favoris.'); return }
         try {
           const { trip } = await api.creerTrajet({ name: `${depart.label} → ${arrivee.label}`, from: depart, to: arrivee, arriveBy: arriverPour, alertsOn: true })
           setTrajetsEnregistres((l) => [...l, trip])

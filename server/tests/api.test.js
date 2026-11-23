@@ -165,6 +165,8 @@ test('trajets : création, lecture, modification, suppression et validation', as
   assert.equal(cree.status, 201)
   const id = cree.data.trip.id
   assert.equal((await a('GET', '/trips')).data.trips.length, 1)
+  assert.equal((await a('POST', '/trips', trajetValide)).status, 409, 'le même trajet ne peut pas être enregistré deux fois')
+  assert.equal((await a('GET', '/trips')).data.trips.length, 1)
   assert.equal((await a('PUT', `/trips/${id}`, { ...trajetValide, arriveBy: '08:30' })).data.trip.arriveBy, '08:30')
   assert.equal((await a('DELETE', `/trips/${id}`)).status, 200)
   assert.equal((await a('GET', '/trips')).data.trips.length, 0)

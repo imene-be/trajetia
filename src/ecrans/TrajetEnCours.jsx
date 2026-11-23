@@ -2,6 +2,7 @@ import React from 'react'
 import { Icone } from '../Icones.jsx'
 import { Entete, IconeMode, Pastille } from '../composants.jsx'
 import { heure } from '../data.js'
+import Carte from '../Carte.jsx'
 
 // Écran 4 : Trajet en cours
 export default function TrajetEnCours({ app }) {
@@ -41,6 +42,8 @@ export default function TrajetEnCours({ app }) {
           <span>{termine ? 'Vous êtes arrivé' : 'dans ' + reste + ' min'}</span>
         </div>
       </div>
+
+      <Carte position={app.position} depart={app.depart} arrivee={app.arrivee} localisation={app.localisation} onLocaliser={app.localiser} trajet={trajet} />
 
       <div className="carte-blanche progression">
         {etapes.map((e, i) => (
