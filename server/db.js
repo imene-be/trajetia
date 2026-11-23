@@ -1,3 +1,4 @@
+import fs from 'node:fs'
 import pg from 'pg'
 import { PGlite } from '@electric-sql/pglite'
 
@@ -93,6 +94,8 @@ export async function openDb(cible, options = {}) {
     }
   } else {
     type = 'pglite'
+    // PGlite ne crée pas les dossiers parents (ex. data/ sur une installation neuve) : on s'en charge
+    if (cible !== 'memory://') fs.mkdirSync(cible, { recursive: true })
     const pglite = cible === 'memory://' ? new PGlite() : new PGlite(cible)
     await pglite.waitReady
     executer = async (sql, params) => { const r = await pglite.query(sql, params); return { rows: r.rows, count: r.affectedRows ?? r.rows.length } }

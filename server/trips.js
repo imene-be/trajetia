@@ -40,6 +40,9 @@ export function creerTrajets({ db, config }) {
     if (!t) return res.status(400).json({ error: 'trajet_invalide', message: 'Trajet incomplet ou invalide.' })
     const { n } = await db.get('SELECT COUNT(*)::int AS n FROM trips WHERE user_id = $1', [req.user.id])
     if (n >= MAX_TRAJETS) return res.status(400).json({ error: 'trop_de_trajets', message: 'Maximum 20 trajets.' })
+    // Même départ, même arrivée, même heure : pas de doublon (il serait surveillé et notifié deux fois)
+    const existant = await db.get('SELECT * FROM trips WHERE user_id = $1 AND from_id = $2 AND to_id = $3 AND arrive_by = $4', [req.user.id, t.fromId, t.toId, t.arriveBy])
+    if (existant) return res.status(409).json({ error: 'deja_enregistre', message: 'Ce trajet est déjà enregistré dans Mes favoris.', trip: vers(existant) })
     const cree = await db.get(
       'INSERT INTO trips (user_id, name, from_label, from_id, to_label, to_id, arrive_by, alerts_on) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
       [req.user.id, t.name, t.fromLabel, t.fromId, t.toLabel, t.toId, t.arriveBy, t.alertsOn],

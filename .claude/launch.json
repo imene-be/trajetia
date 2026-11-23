@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "trajetia",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": ["/c", "set PORT=3001&& node scripts/dev.mjs"],
+      "port": 5173,
+      "autoPort": false
+    }
+  ]
+}

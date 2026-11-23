@@ -73,7 +73,8 @@ export function creerMoteur(brut) {
   const idLigne = new Map()
   for (const r of lireCsv(brut.routes)) {
     idLigne.set(r.route_id, lignes.length)
-    lignes.push({ id: r.route_id, court: r.route_short_name || r.route_long_name || r.route_id, type: Number(r.route_type) })
+    const couleur = (c) => (/^[0-9a-f]{6}$/i.test(c || '') ? '#' + c : null) // couleurs officielles du réseau (route_color)
+    lignes.push({ id: r.route_id, court: r.route_short_name || r.route_long_name || r.route_id, type: Number(r.route_type), couleur: couleur(r.route_color), couleurTexte: couleur(r.route_text_color) })
   }
   const courses = []
   const idCourse = new Map()
@@ -304,13 +305,21 @@ export function creerMoteur(brut) {
     return null
   }
 
+  // Recherche souple : sans accents, tirets ni apostrophes, et tous les mots tapés, dans n'importe quel ordre
+  // (« republique beaux arts » trouve « République Beaux-Arts », « flandres gare » trouve « Gare Lille Flandres »)
+  const souple = (s) => normaliser(s).replace(/[^a-z0-9]+/g, ' ').trim()
+  const nomsSouples = new Map([...groupes.keys()].map((nom) => [nom, souple(nom)]))
+
   function lieuxParNom(q, max = 5) {
-    const cle = normaliser(q)
+    const cle = souple(q)
+    const mots = cle.split(' ').filter(Boolean)
+    if (!mots.length) return []
     const trouves = []
     for (const [nom, idx] of groupes) {
-      const pos = nom.indexOf(cle)
-      if (pos < 0) continue
-      trouves.push({ nom, idx, score: (pos === 0 ? 0 : 100) + nom.length - Math.min(idx.length, 8) * 3 })
+      const texte = nomsSouples.get(nom)
+      if (!mots.every((m) => texte.includes(m))) continue
+      const pos = texte.indexOf(cle)
+      trouves.push({ nom, idx, score: (pos === 0 ? 0 : pos > 0 ? 50 : 100) + texte.length - Math.min(idx.length, 8) * 3 })
     }
     return trouves.sort((a, b) => a.score - b.score).slice(0, max).map((t) => ({ id: 'stop:' + t.nom, label: arrets[t.idx[0]].nom, type: 'stop_area', lat: arrets[t.idx[0]].lat, lon: arrets[t.idx[0]].lon }))
   }
@@ -405,7 +414,11 @@ export function creerMoteur(brut) {
   const libelleLigne = (l) => (l.type === 1 ? (/^M/i.test(l.court) ? l.court : 'M' + l.court) : l.type === 0 ? 'Tram ' + l.court : 'Bus ' + l.court)
 
   // Transforme le résultat brut en trajet lisible. `vue` donne les horaires utilisés.
-  function enTrajet(j, vue, r, sortieDest, id) {
+  // `sortieDest` / `entree` : coordonnées de l'adresse d'arrivée / de départ (null pour un arrêt).
+  // Chaque étape porte son tracé `path` ([[lat, lon], …]) pour la carte : arrêts successifs pour un véhicule,
+  // ligne droite pour la marche (le client la cale ensuite sur les rues).
+  const pt = (s) => [arrets[s].lat, arrets[s].lon]
+  function enTrajet(j, vue, r, sortieDest, id, entree = null) {
     const legs = []
     const lignesUtilisees = []
     const courseIds = []
@@ -416,17 +429,27 @@ export function creerMoteur(brut) {
     const avant = r.etapes.find((e) => e.type === 'acces')
     for (const e of r.etapes) {
       if (e.type === 'acces') {
-        if (e.sec >= 30) { const mn = Math.max(1, Math.round(e.sec / 60)); legs.push({ mode: 'marche', label: 'Marche', minutes: mn, text: `Marchez ${mn} min jusqu’à ${arrets[e.vers].nom}` }); marche += mn }
+        if (e.sec >= 30) {
+          const mn = Math.max(1, Math.round(e.sec / 60))
+          legs.push({ mode: 'marche', label: 'Marche', minutes: mn, text: `Marchez ${mn} min jusqu’à ${arrets[e.vers].nom}`, path: entree ? [[entree.lat, entree.lon], pt(e.vers)] : [pt(e.vers)] })
+          marche += mn
+        }
       } else if (e.type === 'marche') {
         const mn = Math.max(1, Math.round(e.sec / 60))
-        legs.push({ mode: 'marche', label: 'Marche', minutes: mn, text: `Correspondance : marchez ${mn} min jusqu’à ${arrets[e.vers].nom}` }); marche += mn
+        // Avant le premier véhicule, ce n'est pas une correspondance : juste la marche jusqu'à l'arrêt de départ
+        const debut = correspondances === 0 ? 'Marchez' : 'Correspondance : marchez'
+        legs.push({ mode: 'marche', label: 'Marche', minutes: mn, text: `${debut} ${mn} min jusqu’à ${arrets[e.vers].nom}`, path: [pt(e.de), pt(e.vers)] }); marche += mn
       } else {
         const course = courses[j.tCourse[e.board]]
         const ligne = lignes[course.ligne]
         const minutes = Math.max(1, Math.round((vue.arr[e.alight] - vue.dep[e.board]) / 60))
         const nomLigne = libelleLigne(ligne)
+        // les connexions d'une course sont contiguës : de la montée à la descente, arrêt par arrêt
+        const chemin = [pt(j.dStop[e.board])]
+        for (let c = e.board; c <= e.alight; c++) chemin.push(pt(j.aStop[c]))
         legs.push({
-          mode: modeDe(ligne.type), label: nomLigne, minutes,
+          mode: modeDe(ligne.type), label: nomLigne, minutes, color: ligne.couleur, textColor: ligne.couleurTexte, path: chemin,
+          from: arrets[j.dStop[e.board]].nom, to: arrets[j.aStop[e.alight]].nom,
           text: `Prendre ${ligne.type === 1 ? 'le métro' : ligne.type === 0 ? 'le tram' : 'le bus'} ${ligne.court}${course.destination ? ' direction ' + course.destination : ''} jusqu’à ${arrets[j.aStop[e.alight]].nom}`,
         })
         lignesUtilisees.push(course.ligne)
@@ -438,7 +461,7 @@ export function creerMoteur(brut) {
     }
     if (sortieDest && r.sortieSec >= 30) {
       const mn = Math.max(1, Math.round(r.sortieSec / 60))
-      legs.push({ mode: 'marche', label: 'Marche', minutes: mn, text: `Marchez ${mn} min jusqu’à destination` }); marche += mn
+      legs.push({ mode: 'marche', label: 'Marche', minutes: mn, text: `Marchez ${mn} min jusqu’à destination`, path: [pt(r.arretFinal), [sortieDest.lat, sortieDest.lon]] }); marche += mn
     }
     if (!courseIds.length) return null
     const arrivee = r.arriveeSec
@@ -472,12 +495,12 @@ export function chercher(moteur, { origine, destination, arriveBySec, maintenant
     for (let t = debut; t <= arriveBySec; t += pas) {
       const r = moteur.csa(j, vue, o.acces, sortie, t, interdites)
       if (!r) continue
-      const tr = moteur.enTrajet(j, vue, r, Boolean(d.point), '')
+      const tr = moteur.enTrajet(j, vue, r, d.point, '', o.point)
       if (tr && !trouves.has(tr.cle)) trouves.set(tr.cle, tr)
     }
     if (!trouves.size || ![...trouves.values()].some((x) => x.arriveeSec <= arriveBySec)) {
       const r = moteur.csa(j, vue, o.acces, sortie, debut, interdites)
-      const tr = r && moteur.enTrajet(j, vue, r, Boolean(d.point), '')
+      const tr = r && moteur.enTrajet(j, vue, r, d.point, '', o.point)
       if (tr) trouves.set(tr.cle, tr)
     }
     return [...trouves.values()]
@@ -560,10 +583,15 @@ export function chercher(moteur, { origine, destination, arriveBySec, maintenant
   // Alternatives : l'utilisateur est au départ à l'heure de son trajet habituel. On cherche les arrivées les plus tôt
   // en évitant les lignes perturbées, puis en variant le premier choix.
   const alt = new Map()
+  // Une seule alternative par combinaison de lignes (la même, un départ plus tard, n'est pas une vraie option) :
+  // on garde celle qui arrive le plus tôt
   const essayer = (debutSec, interdites) => {
     const r = moteur.csa(j, vue, o.acces, sortie, debutSec, interdites)
-    const tr = r && moteur.enTrajet(j, vue, r, Boolean(d.point), '')
-    if (tr && !alt.has(tr.cle)) alt.set(tr.cle, tr)
+    const tr = r && moteur.enTrajet(j, vue, r, d.point, '', o.point)
+    if (!tr) return tr
+    const sig = tr.lignes.join(',')
+    const deja = alt.get(sig)
+    if (!deja || tr.arriveeSec < deja.arriveeSec) alt.set(sig, tr)
     return tr
   }
   const t0 = habituel.departSec - 300
@@ -641,7 +669,10 @@ export function creerIlevia(config = {}, { fetchImpl = fetch, log = console.log,
     async places({ q, lat, lon }) {
       if (!moteur) throw new Error('chargement')
       if (q === undefined && lat !== undefined) {
-        return [{ id: `addr:${lon.toFixed(5)},${lat.toFixed(5)}`, label: 'Ma position', type: 'address' }, ...moteur.lieuxProches(lat, lon)]
+        // « Ma position » n'est proposée que si un arrêt est accessible à pied (sinon aucun trajet ne pourrait partir de là)
+        const id = `addr:${lon.toFixed(5)},${lat.toFixed(5)}`
+        const ici = moteur.resoudre(id) ? [{ id, label: 'Ma position', type: 'address', lat, lon }] : []
+        return [...ici, ...moteur.lieuxProches(lat, lon)]
       }
       const arrets = moteur.lieuxParNom(q, 5)
       let adresses = []
