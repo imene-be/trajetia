@@ -64,6 +64,16 @@ test('recherche de lieux par nom (sans accents ni majuscules) et par position', 
   assert.equal(m.lieuxProches(50.6401, 3.0601)[0].label, 'Bravo')
 })
 
+test('recherche de lieux souple : tirets, apostrophes et ordre des mots', () => {
+  const stops = ['stop_id,stop_name,stop_lat,stop_lon', 'X,République Beaux-Arts,50.63,3.06', 'Y,Gare Lille Flandres,50.64,3.07', 'Z,Porte d\'Arras,50.62,3.06']
+  const m = creerMoteur({ stops: stops.join('\n'), routes: 'route_id,route_short_name,route_type', trips: 'route_id,service_id,trip_id', stop_times: 'trip_id,arrival_time,departure_time,stop_id,stop_sequence', calendar: null, calendar_dates: null })
+  assert.equal(m.lieuxParNom('republique beaux arts')[0].label, 'République Beaux-Arts')
+  assert.equal(m.lieuxParNom('flandres gare')[0].label, 'Gare Lille Flandres')
+  assert.equal(m.lieuxParNom('porte d arras')[0].label, 'Porte d\'Arras')
+  assert.equal(m.lieuxParNom('republique beaux arts')[0].id, 'stop:republique beaux-arts', 'les identifiants restent inchangés')
+  assert.equal(m.lieuxParNom('--').length, 0)
+})
+
 test('retard réel (GTFS-RT) : le trajet habituel est signalé perturbé avec son nouveau retard', () => {
   const m = reseau()
   // quelques courses du métro R1 (celles de 09:00 à 09:30) partent 25 minutes en retard

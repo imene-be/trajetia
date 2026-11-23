@@ -371,3 +371,23 @@ b { font-weight: 650; }
 .onglets button svg { stroke-width: 1.7; }
 .toast { border-radius: 12px; }
 .temps { color: var(--gris); }
+
+/* Suggestions de lieux (arrêts et adresses venant de l'API) */
+.champ-lieu { position: relative; }
+.champ-lieu label { cursor: text; }
+.suggestions {
+  position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 1000; list-style: none; margin: 0; padding: 4px;
+  background: #fff; border: 1px solid var(--bord); border-radius: 12px; box-shadow: 0 10px 24px rgba(20, 33, 61, .16); max-height: 240px; overflow-y: auto;
+}
+.suggestions li { margin: 0; }
+.suggestions button {
+  width: 100%; display: flex; align-items: center; gap: 8px; text-align: left; background: none; border: none; border-radius: 8px;
+  padding: 8px; font: inherit; font-size: 14px; font-weight: 600; color: var(--marine); cursor: pointer;
+}
+.suggestions button span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.suggestions button small { font-size: 11px; font-weight: 500; }
+.suggestions button svg { color: var(--teal); flex-shrink: 0; }
+.suggestions button.actif, .suggestions button:hover { background: var(--teal-clair); }
+.suggestions.vide { padding: 10px 12px; font-size: 13px; color: var(--gris); }
+.etat-trajet { display: flex; gap: 10px; align-items: flex-start; }
+.etat-trajet svg { flex-shrink: 0; margin-top: 1px; }

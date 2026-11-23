@@ -304,13 +304,21 @@ export function creerMoteur(brut) {
     return null
   }
 
+  // Recherche souple : sans accents, tirets ni apostrophes, et tous les mots tapés, dans n'importe quel ordre
+  // (« republique beaux arts » trouve « République Beaux-Arts », « flandres gare » trouve « Gare Lille Flandres »)
+  const souple = (s) => normaliser(s).replace(/[^a-z0-9]+/g, ' ').trim()
+  const nomsSouples = new Map([...groupes.keys()].map((nom) => [nom, souple(nom)]))
+
   function lieuxParNom(q, max = 5) {
-    const cle = normaliser(q)
+    const cle = souple(q)
+    const mots = cle.split(' ').filter(Boolean)
+    if (!mots.length) return []
     const trouves = []
     for (const [nom, idx] of groupes) {
-      const pos = nom.indexOf(cle)
-      if (pos < 0) continue
-      trouves.push({ nom, idx, score: (pos === 0 ? 0 : 100) + nom.length - Math.min(idx.length, 8) * 3 })
+      const texte = nomsSouples.get(nom)
+      if (!mots.every((m) => texte.includes(m))) continue
+      const pos = texte.indexOf(cle)
+      trouves.push({ nom, idx, score: (pos === 0 ? 0 : pos > 0 ? 50 : 100) + texte.length - Math.min(idx.length, 8) * 3 })
     }
     return trouves.sort((a, b) => a.score - b.score).slice(0, max).map((t) => ({ id: 'stop:' + t.nom, label: arrets[t.idx[0]].nom, type: 'stop_area', lat: arrets[t.idx[0]].lat, lon: arrets[t.idx[0]].lon }))
   }
@@ -641,7 +649,10 @@ export function creerIlevia(config = {}, { fetchImpl = fetch, log = console.log,
     async places({ q, lat, lon }) {
       if (!moteur) throw new Error('chargement')
       if (q === undefined && lat !== undefined) {
-        return [{ id: `addr:${lon.toFixed(5)},${lat.toFixed(5)}`, label: 'Ma position', type: 'address' }, ...moteur.lieuxProches(lat, lon)]
+        // « Ma position » n'est proposée que si un arrêt est accessible à pied (sinon aucun trajet ne pourrait partir de là)
+        const id = `addr:${lon.toFixed(5)},${lat.toFixed(5)}`
+        const ici = moteur.resoudre(id) ? [{ id, label: 'Ma position', type: 'address', lat, lon }] : []
+        return [...ici, ...moteur.lieuxProches(lat, lon)]
       }
       const arrets = moteur.lieuxParNom(q, 5)
       let adresses = []

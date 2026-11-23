@@ -59,12 +59,28 @@ export default function Accueil({ app }) {
         <span className="mode-chip"><i className="icone marche"><Icone nom="walk" taille={14} /></i>Marche</span>
       </div>
 
-      {recherche.perturbation && (
+      {recherche.etat === 'ok' && recherche.perturbation && (
         <button className="alerte-orange cliquable" onClick={() => app.aller('perturbation')}>
           <span className="rond-alerte">!</span>
-          <span><b>Perturbation détectée sur votre trajet</b><small>Voir l’impact sur votre heure d’arrivée et les alternatives.</small></span>
+          <span>
+            <b>{recherche.perturbation.simulee ? 'Incident simulé sur votre trajet (test)' : 'Perturbation détectée sur votre trajet'}</b>
+            <small>
+              {recherche.perturbation.cause} Si vous continuez : arrivée {heure(recherche.perturbation.continuerArrivee)}.{' '}
+              {recherche.perturbation.alternatives.length > 0 ? 'Voir la recommandation et les alternatives.' : 'Aucune alternative n’évite la ligne touchée.'}
+            </small>
+          </span>
           <Icone nom="chevronRight" taille={18} className="chevron" />
         </button>
+      )}
+      {recherche.etat === 'ok' && !recherche.perturbation && recherche.trajets.length > 0 && (
+        <div className="note vert etat-trajet" role="status">
+          <Icone nom="checkCircle" taille={16} />
+          <span>
+            <b>Aucune perturbation sur votre trajet.</b>{' '}
+            Trajet conseillé : départ {heure(recherche.trajets[0].arrivee - recherche.trajets[0].duree)}, arrivée {heure(recherche.trajets[0].arrivee)}
+            {recherche.trajets[0].arrivee <= limite ? ` (à l’heure pour ${arriverPour}).` : ` (après ${arriverPour} : partez dès que possible).`}
+          </span>
+        </div>
       )}
 
       <div className="titre-liste">
@@ -79,7 +95,7 @@ export default function Accueil({ app }) {
             : recherche.tempsReel ? <><Icone nom="radio" taille={14} /> Retards et suppressions du moment pris en compte (temps réel Ilévia).</> : <><Icone nom="clock" taille={14} /> Horaires officiels du réseau (temps réel indisponible pour le moment).</>}
         </div>
       )}
-      {recherche.etat === 'vide' && <div className="note gris">Choisissez un départ et une arrivée parmi les suggestions, puis lancez la recherche.</div>}
+      {recherche.etat === 'vide' && <div className="note gris">Choisissez un départ et une arrivée parmi les suggestions : les trajets s’affichent automatiquement.</div>}
       {recherche.etat === 'chargement' && <div className="chargement"><span className="rouleau" /><b>Recherche des meilleurs trajets…</b></div>}
       {recherche.etat === 'erreur' && <div className="note orange" role="alert"><Icone nom="alert" taille={14} /> {recherche.erreur}</div>}
       {recherche.etat === 'ok' && recherche.trajets.length === 0 && <div className="note gris">Aucun trajet trouvé pour cette recherche.</div>}

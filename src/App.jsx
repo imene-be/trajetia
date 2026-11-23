@@ -59,7 +59,6 @@ export default function App() {
   const departModifie = useRef(false)
   const essaiPosition = useRef(false)
   const chercherRef = useRef(null)
-  const arriveeRef = useRef(null)
 
   const toast = setMessage
 
@@ -114,31 +113,39 @@ export default function App() {
     return () => clearInterval(t)
   }, [sante])
 
+  const numeroRecherche = useRef(0) // seule la dernière recherche lancée a le droit d'afficher son résultat
+
   const chercher = useCallback(async (d = depart, a = arrivee, options = {}) => {
     if (!d || !a) { toast('Choisissez un départ et une arrivée dans les suggestions.'); return null }
+    const numero = ++numeroRecherche.current
+    const aJour = () => numero === numeroRecherche.current
     setRecherche((r) => ({ ...r, etat: 'chargement', erreur: '' }))
     try {
-      const rep = await api.itineraires({ from: d.id, to: a.id, arrive: arriverPour, incident: options.incident })
+      const rep = await api.itineraires({ from: d.id, to: a.id, arrive: options.arrive || arriverPour, incident: options.incident })
+      if (!aJour()) return null // l'utilisateur a changé de lieu entre-temps : réponse périmée
       const trajets = etiqueter(rep.journeys.map(versTrajet))
-      // Une perturbation est détectée si un trajet porte une perturbation et qu'il existe d'autres options
+      // Perturbation : le trajet habituel porte une perturbation (retard ou suppression, réel ou simulé).
+      // Les autres trajets sont les alternatives qui évitent la ligne touchée (il peut ne pas y en avoir).
       let perturbation = null
       const touche = trajets.find((t) => t.perturbations.length > 0)
-      const autres = trajets.filter((t) => t !== touche && t.perturbations.length === 0)
-      if (touche && autres.length > 0) {
+      if (touche) {
+        // copies : les alternatives reçoivent leurs propres étiquettes sans écraser celles de la liste d'accueil
+        const autres = trajets.filter((t) => t !== touche && t.perturbations.length === 0).map((t) => ({ ...t }))
         const p = touche.perturbations[0]
         perturbation = {
           ligne: p.title, titre: p.title, cause: p.message, dureeMin: p.delayMin ?? null, jusqua: null,
-          simulee: Boolean(p.simulated), continuerArrivee: touche.arrivee, alternatives: etiqueter(autres),
+          simulee: Boolean(p.simulated), continuerArrivee: touche.arrivee, habituel: touche, alternatives: etiqueter(autres),
         }
       }
       const resultat = { etat: 'ok', trajets, perturbation, erreur: '', source: rep.source, simule: Boolean(rep.simulated), jour: rep.day, tempsReel: Boolean(rep.realtime) }
       setRecherche(resultat)
       return resultat
     } catch (e) {
+      if (!aJour()) return null
       if (e.code === 'chargement') {
         // Les horaires du réseau se chargent : on réessaie tout seul
         setRecherche({ etat: 'chargement', trajets: [], perturbation: null, erreur: '' })
-        setTimeout(() => chercher(d, a, options), 2500)
+        setTimeout(() => { if (aJour()) chercherRef.current?.(d, a, options) }, 2500)
         return null
       }
       setRecherche({ etat: 'erreur', trajets: [], perturbation: null, erreur: e.message })
@@ -147,6 +154,19 @@ export default function App() {
   }, [depart, arrivee, arriverPour])
 
   chercherRef.current = chercher
+
+  // Dès que le départ, l'arrivée ou l'heure changent, on relance la recherche (court délai pendant la saisie de l'heure).
+  // Si un des deux lieux est effacé, les anciens résultats disparaissent : ils ne correspondent plus à la demande.
+  useEffect(() => {
+    if (!depart || !arrivee) {
+      numeroRecherche.current++
+      setRecherche({ etat: 'vide', trajets: [], perturbation: null, erreur: '' })
+      return undefined
+    }
+    if (!/^\d{2}:\d{2}$/.test(arriverPour)) return undefined
+    const t = setTimeout(() => chercherRef.current?.(depart, arrivee), 300)
+    return () => clearTimeout(t)
+  }, [depart?.id, arrivee?.id, arriverPour])
 
   // Les repères A et B de la carte ont besoin de coordonnées : on les complète si le lieu n'en a pas (trajet d'exemple, favori)
   const completer = (lieu, appliquer) => {
@@ -163,7 +183,6 @@ export default function App() {
   }
   useEffect(() => { completer(depart, setDepart) }, [depart?.id, depart?.lat])
   useEffect(() => { completer(arrivee, setArrivee) }, [arrivee?.id, arrivee?.lat])
-  arriveeRef.current = arrivee
 
   // Premier affichage : un trajet d'exemple prêt à l'emploi (Lille Flandres → Euratechnologies) quand les horaires sont prêts
   useEffect(() => {
@@ -174,8 +193,7 @@ export default function App() {
     const d = reel ? { id: 'stop:gare lille flandres', label: 'Gare Lille Flandres' } : { id: 'demo:lille-flandres', label: 'Lille Flandres' }
     const a = reel ? { id: 'stop:euratechnologies', label: 'Euratechnologies' } : { id: 'demo:euratechnologies', label: 'Euratechnologies' }
     setDepart(d)
-    setArrivee(a)
-    chercher(d, a)
+    setArrivee(a) // la recherche part toute seule (effet ci-dessus)
   }, [sante])
 
   // Lecture de la position (avec l'accord du navigateur). Si `commeDepart`, l'arrêt ou l'adresse la plus proche devient le départ.
@@ -190,11 +208,10 @@ export default function App() {
         try {
           const r = await api.lieuxProches(lat, lon)
           const lieu = r.places[0]
-          if (!lieu) { if (!silencieux) toast('Aucun arrêt proche trouvé.'); return }
+          // Hors du réseau (aucun arrêt à moins d'un kilomètre) : on garde le départ actuel
+          if (!lieu) { if (!silencieux) toast('Aucun arrêt Ilévia près de votre position : saisissez votre départ.'); return }
           if (silencieux && departModifie.current) return // l'utilisateur a déjà choisi son départ
-          const d = { id: lieu.id, label: lieu.label, lat, lon }
-          setDepart(d)
-          if (arriveeRef.current) chercherRef.current?.(d, arriveeRef.current)
+          setDepart({ id: lieu.id, label: lieu.label, lat, lon }) // la recherche se relance toute seule
           if (!silencieux) toast('Départ : ' + lieu.label)
         } catch (e) { if (!silencieux) toast(e.message) }
       },
@@ -306,7 +323,11 @@ export default function App() {
         setTrajetsEnregistres((l) => l.map((t) => (t.id === trip.id ? trip : t)))
       } catch (e) { toast(e.message) }
     },
-    ouvrirTrajet: (t) => { departModifie.current = true; setDepart(t.from); setArrivee(t.to); setArriverPour(t.arriveBy); setEcran('accueil'); chercher(t.from, t.to) },
+    ouvrirTrajet: (t) => {
+      departModifie.current = true; setDepart(t.from); setArrivee(t.to); setArriverPour(t.arriveBy); setEcran('accueil')
+      // Si rien n'a changé (même trajet, même heure), l'effet ne repart pas : on relance la recherche nous-mêmes
+      if (t.from.id === depart?.id && t.to.id === arrivee?.id && t.arriveBy === arriverPour) chercher(t.from, t.to)
+    },
 
     // ---------- Position (avec consentement : l'interrupteur du Profil + l'accord du navigateur) ----------
     utiliserPosition: () => { departModifie.current = true; localiserUtilisateur({ commeDepart: true, centrer: true }) },

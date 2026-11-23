@@ -53,7 +53,7 @@ export function etiqueter(trajets) {
     const candidat = [...trajets].filter((t) => !prises.has(t.id)).sort(critere)[0]
     if (candidat) { candidat.etiquette = etiquette; candidat.typeEtiquette = type; prises.add(candidat.id) }
   }
-  choisir((a, b) => a.arrivee - b.arrivee, 'Le plus rapide', 'vert')
+  choisir((a, b) => a.duree - b.duree || a.arrivee - b.arrivee, 'Le plus rapide', 'vert')
   choisir((a, b) => a.correspondances - b.correspondances || a.arrivee - b.arrivee, 'Le plus simple', 'bleu')
   choisir((a, b) => a.marche - b.marche, 'Moins de marche', 'orange')
   trajets.forEach((t) => { if (!t.etiquette) { t.etiquette = 'Alternative'; t.typeEtiquette = 'gris' } })

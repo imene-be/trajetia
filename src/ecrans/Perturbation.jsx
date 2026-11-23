@@ -31,6 +31,32 @@ function Detail({ app, info }) {
 
   // Les heures viennent des opérateurs : on les affiche tout de suite, sans attendre l'IA
   const prioritaire = (reussi && alternatives.find((t) => t.id === reco.idTrajet)) || trierParArrivee(alternatives)[0]
+
+  // Aucune alternative n'évite la ligne touchée : la seule option est de garder son trajet (avec son retard)
+  if (!prioritaire) {
+    return (
+      <div className="ecran">
+        <Entete onRetour={() => app.aller('accueil')} onCloche={() => app.aller('alertes')} />
+        <div className="alerte-orange">
+          <div className="alerte-haut">
+            <span className="rond-alerte"><Icone nom="alert" taille={18} /></span>
+            <h2>Perturbation détectée</h2>
+          </div>
+          <p>{info.cause}</p>
+        </div>
+        <div className="carte-blanche reco">
+          <h3>Gardez votre trajet habituel</h3>
+          <p className="texte-reco">
+            Aucune alternative n’évite la ligne touchée à cette heure. En continuant, vous arrivez vers <b>{heure(info.continuerArrivee)}</b>
+            {info.continuerArrivee > limite ? ` (${info.continuerArrivee - limite} min après ${app.arriverPour}).` : '.'}
+          </p>
+          {info.habituel && <Etapes trajet={info.habituel} />}
+          {info.habituel && <button className="bouton-principal large" onClick={() => app.choisir(info.habituel)}>Suivre ce trajet <Icone nom="arrowRight" taille={16} /></button>}
+          <button className="bouton-contour large" onClick={() => app.aller('accueil')}>Retour à l’accueil</button>
+        </div>
+      </div>
+    )
+  }
   const gain = info.continuerArrivee - prioritaire.arrivee
   const retard = info.continuerArrivee - limite
   const ecart = prioritaire.arrivee - limite
