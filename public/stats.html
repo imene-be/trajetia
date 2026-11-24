@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="icon" href="/icone.svg" type="image/svg+xml" />
+  <title>TrajetIA – Résultats des QR codes</title>
+  <link rel="stylesheet" href="/stats.css" />
+</head>
+<body>
+  <main>
+    <header>
+      <img src="/icone.svg" alt="" width="36" height="36" />
+      <div>
+        <h1>Résultats des QR codes</h1>
+        <p class="sous">Combien de personnes ont ouvert TrajetIA depuis chaque flyer.</p>
+      </div>
+    </header>
+
+    <form id="connexion" autocomplete="off">
+      <label for="jeton">Jeton admin</label>
+      <div class="ligne">
+        <input id="jeton" type="password" placeholder="Colle ton ADMIN_TOKEN" required />
+        <button type="submit">Voir</button>
+      </div>
+      <p id="erreur" class="erreur" role="alert" hidden></p>
+    </form>
+
+    <section id="resultats" hidden>
+      <div class="gros">
+        <span id="total">0</span>
+        <span class="legende">visiteurs uniques au total</span>
+      </div>
+
+      <h2>Par QR code</h2>
+      <p class="aide">Chaque ligne est un <code>?src=…</code> d'un QR code. « Direct » = personnes arrivées sans QR code.</p>
+      <ul id="canaux" class="canaux"></ul>
+
+      <h2>Autres indicateurs</h2>
+      <dl id="autres" class="autres"></dl>
+
+      <div class="actions">
+        <button id="actualiser" type="button" class="secondaire">Actualiser</button>
+        <button id="deconnexion" type="button" class="secondaire">Changer de jeton</button>
+        <span id="maj" class="maj"></span>
+      </div>
+    </section>
+  </main>
+  <script src="/stats.js"></script>
+</body>
+</html>
