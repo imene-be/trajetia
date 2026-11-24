@@ -40,6 +40,9 @@ export function loadConfig(overrides = {}) {
     vapidSubject: process.env.VAPID_SUBJECT || 'mailto:contact@example.com',
     // Surveillance des perturbations
     monitorIntervalMin: Number(process.env.MONITOR_INTERVAL_MIN || 5),
+    // Page publique des résultats des QR codes (/stats.html) : on ne compte que les visiteurs apparus APRÈS cette date,
+    // pour écarter les visites de test d'avant la distribution (rien n'est supprimé dans la base)
+    statsDepuis: process.env.STATS_DEPUIS || '2026-11-24T10:20:00Z',
     // Accès au tableau de bord des KPI
     adminToken: process.env.ADMIN_TOKEN || '',
     ...overrides,

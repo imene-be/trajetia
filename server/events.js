@@ -23,12 +23,14 @@ export function creerEvenements({ db, config, userDepuisCookie }) {
   // combien ont testé un trajet. Aucune donnée personnelle, aucun identifiant, rien sur l'IA ni les comptes.
   // Un visiteur compte pour son premier canal, comme dans le tableau de bord admin ci-dessous.
   router.get('/stats/canaux', rateLimit({ windowMs: 60_000, limit: 30, standardHeaders: true, legacyHeaders: false }), async (_req, res) => {
+    // Seuls comptent les visiteurs dont la toute première visite est postérieure à config.statsDepuis (visites de test écartées)
     const lignes = await db.all(`
-      WITH premier AS (SELECT DISTINCT ON (visitor_id) visitor_id, channel FROM events ORDER BY visitor_id, created_at, id),
-           actif AS (SELECT DISTINCT visitor_id FROM events WHERE name IN ('trip_saved', 'alternative_viewed'))
+      WITH nouveaux AS (SELECT visitor_id FROM events GROUP BY visitor_id HAVING MIN(created_at) >= $1::timestamptz),
+           premier AS (SELECT DISTINCT ON (e.visitor_id) e.visitor_id, e.channel FROM events e JOIN nouveaux n ON n.visitor_id = e.visitor_id ORDER BY e.visitor_id, e.created_at, e.id),
+           actif AS (SELECT DISTINCT e.visitor_id FROM events e JOIN nouveaux n ON n.visitor_id = e.visitor_id WHERE e.name IN ('trip_saved', 'alternative_viewed'))
       SELECT p.channel AS canal, COUNT(*)::int AS visiteurs, COUNT(a.visitor_id)::int AS actives
       FROM premier p LEFT JOIN actif a ON a.visitor_id = p.visitor_id
-      GROUP BY p.channel ORDER BY visiteurs DESC, canal`)
+      GROUP BY p.channel ORDER BY visiteurs DESC, canal`, [config.statsDepuis])
     const canaux = {}
     let visiteurs = 0
     for (const l of lignes) {

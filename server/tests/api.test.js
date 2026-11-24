@@ -405,6 +405,13 @@ test('événements anonymes et tableau de bord protégé', async () => {
   assert.deepEqual(pub.data.canaux.video, { visiteurs: 1, actives: 0, tauxConversion: 0 })
   assert.deepEqual(Object.keys(pub.data).sort(), ['canaux', 'visiteurs'], 'rien d’autre que les chiffres par canal')
   await s.fermer()
+
+  // Les visites d'avant la date de départ (tests) sont écartées des résultats publics, sans être supprimées
+  const futur = await demarrer({ config: { statsDepuis: '2999-01-01T00:00:00Z' } })
+  const f = futur.client()
+  await f('POST', '/events', { visitorId: v1, name: 'visit', channel: 'gare' })
+  assert.deepEqual((await f('GET', '/stats/canaux')).data, { visiteurs: 0, canaux: {} })
+  await futur.fermer()
 })
 
 test('les limites de débit restent sur leur route : trop de recherches ne bloquent ni les mesures ni les notifications', async () => {
