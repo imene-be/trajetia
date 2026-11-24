@@ -3,7 +3,7 @@ import { Router } from 'express'
 import rateLimit from 'express-rate-limit'
 
 // Mesures d'usage anonymes : une pastille par visiteur (identifiant aléatoire), jamais de trajet ni de position.
-const NOMS = new Set(['visit', 'demo_started', 'signup', 'trip_saved', 'alternative_viewed', 'app_open', 'push_enabled'])
+const NOMS = new Set(['visit', 'qr_scan', 'demo_started', 'signup', 'trip_saved', 'alternative_viewed', 'app_open', 'push_enabled'])
 const UUID = /^[0-9a-f-]{16,40}$/i
 const CANAL = /^[a-z0-9_-]{1,32}$/
 
@@ -19,25 +19,31 @@ export function creerEvenements({ db, config, userDepuisCookie }) {
     res.status(201).json({ ok: true })
   })
 
-  // Résultats des QR codes, SANS jeton : uniquement le nombre de visiteurs uniques par canal (?src=…) et
-  // combien ont testé un trajet. Aucune donnée personnelle, aucun identifiant, rien sur l'IA ni les comptes.
-  // Un visiteur compte pour son premier canal, comme dans le tableau de bord admin ci-dessous.
+  // Résultats des QR codes, SANS jeton : uniquement des nombres de personnes. Aucune donnée personnelle, aucun
+  // identifiant, rien sur l'IA ni les comptes.
+  //  - qr     : personnes qui ont SCANNÉ un QR code (événement « qr_scan », envoyé quand la page est ouverte avec ?src=…) ;
+  //  - direct : personnes venues sans scanner (adresse, lien, favori), hors celles déjà comptées en qr ;
+  //  - canaux : détail du qr par étiquette (?src=flyer, ?src=flyer_fac…).
+  // Seuls comptent les événements postérieurs à config.statsDepuis (tests d'avant la distribution écartés, sans suppression).
   router.get('/stats/canaux', rateLimit({ windowMs: 60_000, limit: 30, standardHeaders: true, legacyHeaders: false }), async (_req, res) => {
-    // Seuls comptent les visiteurs dont la toute première visite est postérieure à config.statsDepuis (visites de test écartées)
-    const lignes = await db.all(`
-      WITH nouveaux AS (SELECT visitor_id FROM events GROUP BY visitor_id HAVING MIN(created_at) >= $1::timestamptz),
-           premier AS (SELECT DISTINCT ON (e.visitor_id) e.visitor_id, e.channel FROM events e JOIN nouveaux n ON n.visitor_id = e.visitor_id ORDER BY e.visitor_id, e.created_at, e.id),
-           actif AS (SELECT DISTINCT e.visitor_id FROM events e JOIN nouveaux n ON n.visitor_id = e.visitor_id WHERE e.name IN ('trip_saved', 'alternative_viewed'))
-      SELECT p.channel AS canal, COUNT(*)::int AS visiteurs, COUNT(a.visitor_id)::int AS actives
-      FROM premier p LEFT JOIN actif a ON a.visitor_id = p.visitor_id
-      GROUP BY p.channel ORDER BY visiteurs DESC, canal`, [config.statsDepuis])
-    const canaux = {}
-    let visiteurs = 0
-    for (const l of lignes) {
-      canaux[l.canal] = { visiteurs: l.visiteurs, actives: l.actives, tauxConversion: l.visiteurs ? l.actives / l.visiteurs : 0 }
-      visiteurs += l.visiteurs
-    }
-    res.set('cache-control', 'no-store').json({ visiteurs, canaux })
+    const depuis = [config.statsDepuis]
+    const parCanal = await db.all(
+      `SELECT channel AS canal, COUNT(DISTINCT visitor_id)::int AS personnes FROM events
+       WHERE name = 'qr_scan' AND created_at >= $1::timestamptz GROUP BY channel ORDER BY personnes DESC, canal`, depuis)
+    const scans = await db.get(
+      `SELECT COUNT(DISTINCT visitor_id)::int AS n, MAX(created_at) AS dernier FROM events
+       WHERE name = 'qr_scan' AND created_at >= $1::timestamptz`, depuis)
+    const direct = await db.get(
+      `SELECT COUNT(DISTINCT visitor_id)::int AS n FROM events
+       WHERE name = 'visit' AND created_at >= $1::timestamptz
+         AND visitor_id NOT IN (SELECT visitor_id FROM events WHERE name = 'qr_scan' AND created_at >= $1::timestamptz)`, depuis)
+    res.set('cache-control', 'no-store').json({
+      qr: scans.n,
+      direct: direct.n,
+      visiteurs: scans.n + direct.n,
+      dernierScan: scans.dernier ? new Date(scans.dernier).toISOString() : null,
+      canaux: Object.fromEntries(parCanal.map((l) => [l.canal, l.personnes])),
+    })
   })
 
   // Tableau de bord des indicateurs du dossier (North Star + 3 KPI). Protégé par ADMIN_TOKEN.

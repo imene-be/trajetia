@@ -24,8 +24,8 @@ h1 { font-size: 22px; margin: 0; letter-spacing: -0.4px; }
 .carte.direct .icone { color: var(--teal); }
 .carte.direct .note { color: var(--gris); }
 
-.total { text-align: center; color: var(--gris); font-size: 14px; margin: 20px 0 0; }
-.total strong { color: var(--marine); }
+.detail { text-align: center; color: var(--teal); font-size: 13px; font-weight: 600; margin: 16px 0 0; }
+.total { text-align: center; color: var(--gris); font-size: 14px; margin: 16px 0 0; }
 
 footer { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 22px; }
 button { font: inherit; font-weight: 600; font-size: 14px; background: #fff; color: var(--marine); border: 1px solid var(--bord); border-radius: 999px; padding: 9px 18px; cursor: pointer; }

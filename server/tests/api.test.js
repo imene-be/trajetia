@@ -396,22 +396,63 @@ test('événements anonymes et tableau de bord protégé', async () => {
   assert.equal(kpis.data.tauxActivation, 1)
   assert.equal(kpis.data.conversionParCanal.gare.tauxConversion, 1)
   assert.equal(kpis.data.conversionParCanal.video.tauxConversion, 0)
+  await s.fermer()
+})
 
-  // Résultats des QR codes : publics (sans jeton), mais limités aux chiffres par canal
-  const pub = await a('GET', '/stats/canaux')
-  assert.equal(pub.status, 200)
-  assert.equal(pub.data.visiteurs, 2)
-  assert.deepEqual(pub.data.canaux.gare, { visiteurs: 1, actives: 1, tauxConversion: 1 })
-  assert.deepEqual(pub.data.canaux.video, { visiteurs: 1, actives: 0, tauxConversion: 0 })
-  assert.deepEqual(Object.keys(pub.data).sort(), ['canaux', 'visiteurs'], 'rien d’autre que les chiffres par canal')
+test('résultats publics des QR codes : scans réels, visites directes, sans jeton', async () => {
+  const s = await demarrer()
+  const a = s.client()
+  const [p1, p2, p3, p4] = ['1', '2', '3', '4'].map((n) => `${n}${n}${n}${n}${n}${n}${n}${n}-1111-4111-8111-aaaaaaaaaaaa`)
+  const lire = async () => (await a('GET', '/stats/canaux')).data
+
+  // Au départ : rien, et la route répond sans jeton
+  const vide = await a('GET', '/stats/canaux')
+  assert.equal(vide.status, 200)
+  assert.deepEqual(vide.data, { qr: 0, direct: 0, visiteurs: 0, dernierScan: null, canaux: {} })
+
+  // p1 et p2 scannent le flyer ; p3 scanne un autre QR ; p4 arrive en direct
+  for (const p of [p1, p2]) { await a('POST', '/events', { visitorId: p, name: 'visit', channel: 'flyer' }); await a('POST', '/events', { visitorId: p, name: 'qr_scan', channel: 'flyer' }) }
+  await a('POST', '/events', { visitorId: p3, name: 'qr_scan', channel: 'flyer_fac' })
+  await a('POST', '/events', { visitorId: p4, name: 'visit', channel: 'direct' })
+  // p1 scanne deux fois : une seule personne
+  await a('POST', '/events', { visitorId: p1, name: 'qr_scan', channel: 'flyer' })
+
+  const r = await lire()
+  assert.equal(r.qr, 3, 'p1, p2 et p3 ont scanné')
+  assert.equal(r.direct, 1, 'p4 est venu en direct')
+  assert.equal(r.visiteurs, 4)
+  assert.deepEqual(r.canaux, { flyer: 2, flyer_fac: 1 })
+  assert.ok(Date.now() - new Date(r.dernierScan).getTime() < 60_000, 'le dernier scan est récent')
+  assert.deepEqual(Object.keys(r).sort(), ['canaux', 'dernierScan', 'direct', 'qr', 'visiteurs'], 'rien d’autre que des chiffres')
+
+  // Un visiteur déjà venu en direct, qui scanne ensuite, passe côté QR (et plus en direct)
+  await a('POST', '/events', { visitorId: p4, name: 'qr_scan', channel: 'flyer' })
+  const apres = await lire()
+  assert.equal(apres.qr, 4)
+  assert.equal(apres.direct, 0)
+  assert.equal(apres.visiteurs, 4)
+  await s.fermer()
+})
+
+test('résultats publics : les visites d’avant la date de départ (tests) sont écartées, mais pas un ancien visiteur qui scanne après', async () => {
+  const s = await demarrer({ config: { statsDepuis: '2999-01-01T00:00:00Z' } })
+  const a = s.client()
+  const v = 'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa'
+  await a('POST', '/events', { visitorId: v, name: 'visit', channel: 'direct' })
+  await a('POST', '/events', { visitorId: v, name: 'qr_scan', channel: 'flyer' })
+  assert.deepEqual((await a('GET', '/stats/canaux')).data, { qr: 0, direct: 0, visiteurs: 0, dernierScan: null, canaux: {} })
   await s.fermer()
 
-  // Les visites d'avant la date de départ (tests) sont écartées des résultats publics, sans être supprimées
-  const futur = await demarrer({ config: { statsDepuis: '2999-01-01T00:00:00Z' } })
-  const f = futur.client()
-  await f('POST', '/events', { visitorId: v1, name: 'visit', channel: 'gare' })
-  assert.deepEqual((await f('GET', '/stats/canaux')).data, { visiteurs: 0, canaux: {} })
-  await futur.fermer()
+  // Départ dans le passé : un visiteur dont la 1re visite est AVANT le départ mais qui scanne APRÈS est bien compté
+  const ancien = await demarrer({ config: { statsDepuis: new Date(Date.now() + 1500).toISOString() } })
+  const b = ancien.client()
+  await b('POST', '/events', { visitorId: v, name: 'visit', channel: 'direct' }) // avant le départ
+  await new Promise((r) => setTimeout(r, 1700))
+  await b('POST', '/events', { visitorId: v, name: 'qr_scan', channel: 'flyer' }) // après le départ
+  const r = (await b('GET', '/stats/canaux')).data
+  assert.equal(r.qr, 1, 'l’ancien visiteur qui scanne après le départ est compté')
+  assert.equal(r.direct, 0)
+  await ancien.fermer()
 })
 
 test('les limites de débit restent sur leur route : trop de recherches ne bloquent ni les mesures ni les notifications', async () => {

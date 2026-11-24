@@ -9,7 +9,7 @@ import Favoris from './ecrans/Favoris.jsx'
 import TrajetEnCours from './ecrans/TrajetEnCours.jsx'
 import Alertes from './ecrans/Alertes.jsx'
 import Profil from './ecrans/Profil.jsx'
-import { api, suivre, canal } from './api.js'
+import { api, suivre, suivreScan, canal } from './api.js'
 import { ARRIVER_POUR_DEFAUT, versTrajet, etiqueter } from './data.js'
 
 const PREFS_PAR_DEFAUT = {
@@ -103,6 +103,7 @@ export default function App() {
     try {
       if (!sessionStorage.getItem('trajetia.visite')) { sessionStorage.setItem('trajetia.visite', '1'); suivre('visit') }
     } catch { /* ignore */ }
+    suivreScan()
   }, [chargerCompte])
 
   // Tant que le serveur ne répond pas ou que les horaires se chargent, on réessaie toutes les 2 secondes

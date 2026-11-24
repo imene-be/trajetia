@@ -65,3 +65,16 @@ export function canal() {
 export function suivre(name) {
   appeler('POST', '/events', { visitorId: identifiantVisiteur(), name, channel: canal() }).catch(() => {})
 }
+
+// Scan d'un QR code : la page vient d'être ouverte avec une étiquette (?src=flyer…) dans l'adresse.
+// Compté une seule fois par session et par étiquette (un rechargement de page n'est pas un nouveau scan).
+export function suivreScan() {
+  try {
+    const src = new URLSearchParams(window.location.search).get('src')
+    if (!src || !/^[a-z0-9_-]{1,32}$/.test(src)) return
+    const cle = 'trajetia.scan.' + src
+    if (sessionStorage.getItem(cle)) return
+    sessionStorage.setItem(cle, '1')
+    suivre('qr_scan')
+  } catch { /* mesure facultative : ne jamais gêner l'appli */ }
+}
