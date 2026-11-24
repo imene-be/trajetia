@@ -408,7 +408,8 @@ test('résultats publics des QR codes : scans réels, visites directes, sans jet
   // Au départ : rien, et la route répond sans jeton
   const vide = await a('GET', '/stats/canaux')
   assert.equal(vide.status, 200)
-  assert.deepEqual(vide.data, { qr: 0, direct: 0, visiteurs: 0, dernierScan: null, canaux: {} })
+  assert.deepEqual({ ...vide.data, depuis: undefined }, { qr: 0, direct: 0, visiteurs: 0, dernierScan: null, depuis: undefined, canaux: {} })
+  assert.match(vide.data.depuis, /^\d{4}-\d{2}-\d{2}T/, 'la date de départ est indiquée')
 
   // p1 et p2 scannent le flyer ; p3 scanne un autre QR ; p4 arrive en direct
   for (const p of [p1, p2]) { await a('POST', '/events', { visitorId: p, name: 'visit', channel: 'flyer' }); await a('POST', '/events', { visitorId: p, name: 'qr_scan', channel: 'flyer' }) }
@@ -423,7 +424,13 @@ test('résultats publics des QR codes : scans réels, visites directes, sans jet
   assert.equal(r.visiteurs, 4)
   assert.deepEqual(r.canaux, { flyer: 2, flyer_fac: 1 })
   assert.ok(Date.now() - new Date(r.dernierScan).getTime() < 60_000, 'le dernier scan est récent')
-  assert.deepEqual(Object.keys(r).sort(), ['canaux', 'dernierScan', 'direct', 'qr', 'visiteurs'], 'rien d’autre que des chiffres')
+  assert.deepEqual(Object.keys(r).sort(), ['canaux', 'depuis', 'dernierScan', 'direct', 'qr', 'visiteurs'], 'rien d’autre que des chiffres et la date de départ')
+
+  // Un test (?src=test) n'est jamais compté, ni en QR code ni en direct
+  const [t1] = ['9'].map((n) => `${n}${n}${n}${n}${n}${n}${n}${n}-1111-4111-8111-aaaaaaaaaaaa`)
+  await a('POST', '/events', { visitorId: t1, name: 'visit', channel: 'test' })
+  await a('POST', '/events', { visitorId: t1, name: 'qr_scan', channel: 'test' })
+  assert.deepEqual({ qr: (await lire()).qr, direct: (await lire()).direct }, { qr: 3, direct: 1 }, 'le canal test est ignoré')
 
   // Un visiteur déjà venu en direct, qui scanne ensuite, passe côté QR (et plus en direct)
   await a('POST', '/events', { visitorId: p4, name: 'qr_scan', channel: 'flyer' })
@@ -440,7 +447,8 @@ test('résultats publics : les visites d’avant la date de départ (tests) sont
   const v = 'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa'
   await a('POST', '/events', { visitorId: v, name: 'visit', channel: 'direct' })
   await a('POST', '/events', { visitorId: v, name: 'qr_scan', channel: 'flyer' })
-  assert.deepEqual((await a('GET', '/stats/canaux')).data, { qr: 0, direct: 0, visiteurs: 0, dernierScan: null, canaux: {} })
+  const futur = (await a('GET', '/stats/canaux')).data
+  assert.deepEqual({ qr: futur.qr, direct: futur.direct, visiteurs: futur.visiteurs, dernierScan: futur.dernierScan, canaux: futur.canaux }, { qr: 0, direct: 0, visiteurs: 0, dernierScan: null, canaux: {} })
   await s.fermer()
 
   // Départ dans le passé : un visiteur dont la 1re visite est AVANT le départ mais qui scanne APRÈS est bien compté

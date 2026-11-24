@@ -23,25 +23,30 @@ export function creerEvenements({ db, config, userDepuisCookie }) {
   // identifiant, rien sur l'IA ni les comptes.
   //  - qr     : personnes qui ont SCANNÉ un QR code (événement « qr_scan », envoyé quand la page est ouverte avec ?src=…) ;
   //  - direct : personnes venues sans scanner (adresse, lien, favori), hors celles déjà comptées en qr ;
-  //  - canaux : détail du qr par étiquette (?src=flyer, ?src=flyer_fac…).
+  //  - canaux : détail du qr par étiquette (?src=flyer, ?src=flyer_fac…) ;
+  //  - depuis : date à partir de laquelle on compte.
   // Seuls comptent les événements postérieurs à config.statsDepuis (tests d'avant la distribution écartés, sans suppression).
+  // Une étiquette qui commence par « test » (?src=test) n'est jamais comptée : on peut vérifier le parcours sans fausser les chiffres.
+  // « Direct » = visite arrivée avec le canal « direct » (pas d'étiquette), par une personne qui n'a pas scanné depuis la date de départ.
   router.get('/stats/canaux', rateLimit({ windowMs: 60_000, limit: 30, standardHeaders: true, legacyHeaders: false }), async (_req, res) => {
     const depuis = [config.statsDepuis]
     const parCanal = await db.all(
       `SELECT channel AS canal, COUNT(DISTINCT visitor_id)::int AS personnes FROM events
-       WHERE name = 'qr_scan' AND created_at >= $1::timestamptz GROUP BY channel ORDER BY personnes DESC, canal`, depuis)
+       WHERE name = 'qr_scan' AND channel NOT LIKE 'test%' AND created_at >= $1::timestamptz
+       GROUP BY channel ORDER BY personnes DESC, canal`, depuis)
     const scans = await db.get(
       `SELECT COUNT(DISTINCT visitor_id)::int AS n, MAX(created_at) AS dernier FROM events
-       WHERE name = 'qr_scan' AND created_at >= $1::timestamptz`, depuis)
+       WHERE name = 'qr_scan' AND channel NOT LIKE 'test%' AND created_at >= $1::timestamptz`, depuis)
     const direct = await db.get(
       `SELECT COUNT(DISTINCT visitor_id)::int AS n FROM events
-       WHERE name = 'visit' AND created_at >= $1::timestamptz
+       WHERE name = 'visit' AND channel = 'direct' AND created_at >= $1::timestamptz
          AND visitor_id NOT IN (SELECT visitor_id FROM events WHERE name = 'qr_scan' AND created_at >= $1::timestamptz)`, depuis)
     res.set('cache-control', 'no-store').json({
       qr: scans.n,
       direct: direct.n,
       visiteurs: scans.n + direct.n,
       dernierScan: scans.dernier ? new Date(scans.dernier).toISOString() : null,
+      depuis: new Date(config.statsDepuis).toISOString(),
       canaux: Object.fromEntries(parCanal.map((l) => [l.canal, l.personnes])),
     })
   })
