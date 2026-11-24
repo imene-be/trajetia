@@ -19,6 +19,25 @@ export function creerEvenements({ db, config, userDepuisCookie }) {
     res.status(201).json({ ok: true })
   })
 
+  // Résultats des QR codes, SANS jeton : uniquement le nombre de visiteurs uniques par canal (?src=…) et
+  // combien ont testé un trajet. Aucune donnée personnelle, aucun identifiant, rien sur l'IA ni les comptes.
+  // Un visiteur compte pour son premier canal, comme dans le tableau de bord admin ci-dessous.
+  router.get('/stats/canaux', rateLimit({ windowMs: 60_000, limit: 30, standardHeaders: true, legacyHeaders: false }), async (_req, res) => {
+    const lignes = await db.all(`
+      WITH premier AS (SELECT DISTINCT ON (visitor_id) visitor_id, channel FROM events ORDER BY visitor_id, created_at, id),
+           actif AS (SELECT DISTINCT visitor_id FROM events WHERE name IN ('trip_saved', 'alternative_viewed'))
+      SELECT p.channel AS canal, COUNT(*)::int AS visiteurs, COUNT(a.visitor_id)::int AS actives
+      FROM premier p LEFT JOIN actif a ON a.visitor_id = p.visitor_id
+      GROUP BY p.channel ORDER BY visiteurs DESC, canal`)
+    const canaux = {}
+    let visiteurs = 0
+    for (const l of lignes) {
+      canaux[l.canal] = { visiteurs: l.visiteurs, actives: l.actives, tauxConversion: l.visiteurs ? l.actives / l.visiteurs : 0 }
+      visiteurs += l.visiteurs
+    }
+    res.set('cache-control', 'no-store').json({ visiteurs, canaux })
+  })
+
   // Tableau de bord des indicateurs du dossier (North Star + 3 KPI). Protégé par ADMIN_TOKEN.
   router.get('/admin/kpis', async (req, res) => {
     const fourni = Buffer.from(String(req.get('x-admin-token') || ''))

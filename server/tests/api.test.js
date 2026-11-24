@@ -396,6 +396,14 @@ test('événements anonymes et tableau de bord protégé', async () => {
   assert.equal(kpis.data.tauxActivation, 1)
   assert.equal(kpis.data.conversionParCanal.gare.tauxConversion, 1)
   assert.equal(kpis.data.conversionParCanal.video.tauxConversion, 0)
+
+  // Résultats des QR codes : publics (sans jeton), mais limités aux chiffres par canal
+  const pub = await a('GET', '/stats/canaux')
+  assert.equal(pub.status, 200)
+  assert.equal(pub.data.visiteurs, 2)
+  assert.deepEqual(pub.data.canaux.gare, { visiteurs: 1, actives: 1, tauxConversion: 1 })
+  assert.deepEqual(pub.data.canaux.video, { visiteurs: 1, actives: 0, tauxConversion: 0 })
+  assert.deepEqual(Object.keys(pub.data).sort(), ['canaux', 'visiteurs'], 'rien d’autre que les chiffres par canal')
   await s.fermer()
 })
 

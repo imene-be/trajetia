@@ -1,39 +1,23 @@
 // Page simple pour voir combien de personnes ont ouvert l'appli depuis chaque QR code.
-// Elle lit /api/admin/kpis (protégé par ADMIN_TOKEN). Le jeton reste dans l'onglet (sessionStorage) et n'est envoyé qu'à notre serveur.
+// Elle lit /api/stats/canaux : uniquement des chiffres par canal, sans donnée personnelle, sans jeton.
 const $ = (id) => document.getElementById(id)
-const CLE = 'trajetia.admin'
 
-const pct = (x) => (x === null || x === undefined ? '—' : Math.round(x * 100) + ' %')
+const pct = (x) => Math.round(x * 100) + ' %'
 const pluriel = (n, un, plusieurs) => `${n} ${n > 1 ? plusieurs : un}`
 
-function montrerErreur(msg) {
-  $('erreur').textContent = msg
-  $('erreur').hidden = !msg
-}
-
-function ligne(nom, valeur) {
-  const d = document.createElement('div')
-  const dt = document.createElement('dt')
-  const dd = document.createElement('dd')
-  dt.textContent = nom
-  dd.textContent = valeur
-  d.append(dt, dd)
-  return d
-}
-
-function afficher(k) {
-  $('total').textContent = k.visiteurs
-  const canaux = Object.entries(k.conversionParCanal || {}).sort((a, b) => b[1].visiteurs - a[1].visiteurs)
-  const max = Math.max(1, ...canaux.map(([, c]) => c.visiteurs))
+function afficher({ visiteurs, canaux }) {
+  $('total').textContent = visiteurs
   const liste = $('canaux')
   liste.replaceChildren()
-  if (!canaux.length) {
+  const lignes = Object.entries(canaux).sort((a, b) => b[1].visiteurs - a[1].visiteurs)
+  if (!lignes.length) {
     const v = document.createElement('li')
     v.className = 'vide'
     v.textContent = 'Aucune visite enregistrée pour le moment.'
     liste.append(v)
   }
-  for (const [nom, c] of canaux) {
+  const max = Math.max(1, ...lignes.map(([, c]) => c.visiteurs))
+  for (const [nom, c] of lignes) {
     const li = document.createElement('li')
     li.className = 'canal' + (nom === 'direct' ? '' : ' qr')
     const tete = document.createElement('div')
@@ -56,51 +40,21 @@ function afficher(k) {
     li.append(tete, detail, barre)
     liste.append(li)
   }
-  const autres = $('autres')
-  autres.replaceChildren(
-    ligne('Alternatives consultées (7 derniers jours)', k.northStarMetric?.valeur ?? 0),
-    ligne('Inscrits qui ont utilisé l’appli', pct(k.tauxActivation)),
-    ligne('Reviennent dans les 7 jours', pct(k.tauxRetention7j)),
-  )
-  $('maj').textContent = 'Mis à jour à ' + new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+  $('maj').textContent = 'Mis à jour à ' + new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
 }
 
-async function charger(jeton) {
-  montrerErreur('')
-  let rep
+async function charger() {
   try {
-    rep = await fetch('/api/admin/kpis', { headers: { 'x-admin-token': jeton }, cache: 'no-store' })
+    const rep = await fetch('/api/stats/canaux', { cache: 'no-store' })
+    if (!rep.ok) throw new Error('HTTP ' + rep.status)
+    afficher(await rep.json())
+    $('erreur').hidden = true
   } catch {
-    montrerErreur('Impossible de joindre le serveur. Réessaie dans un instant.')
-    return false
+    $('erreur').textContent = 'Impossible de charger les résultats pour le moment. Réessaie dans un instant.'
+    $('erreur').hidden = false
   }
-  if (rep.status === 401) {
-    sessionStorage.removeItem(CLE)
-    montrerErreur('Accès refusé : jeton incorrect, ou ADMIN_TOKEN pas encore défini sur le serveur.')
-    return false
-  }
-  if (!rep.ok) {
-    montrerErreur('Le serveur a répondu une erreur (' + rep.status + '). Réessaie dans un instant.')
-    return false
-  }
-  afficher(await rep.json())
-  sessionStorage.setItem(CLE, jeton)
-  $('connexion').hidden = true
-  $('resultats').hidden = false
-  return true
 }
 
-$('connexion').addEventListener('submit', (e) => {
-  e.preventDefault()
-  charger($('jeton').value.trim())
-})
-$('actualiser').addEventListener('click', () => charger(sessionStorage.getItem(CLE) || ''))
-$('deconnexion').addEventListener('click', () => {
-  sessionStorage.removeItem(CLE)
-  $('resultats').hidden = true
-  $('connexion').hidden = false
-  $('jeton').value = ''
-})
-
-const memorise = sessionStorage.getItem(CLE)
-if (memorise) charger(memorise)
+$('actualiser').addEventListener('click', charger)
+charger()
+setInterval(charger, 30000)
